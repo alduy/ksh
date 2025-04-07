@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block title %}数据分析 - 贵阳市交通拥堵监测系统{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="fas fa-chart-line me-2"></i>交通数据分析
+</h2>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card analysis-filter">
+            <div class="card-body">
+                <form id="analysis-form" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="date-range" class="form-label">日期范围</label>
+                        <select id="date-range" class="form-select">
+                            <option value="1">过去1天</option>
+                            <option value="3">过去3天</option>
+                            <option value="7" selected>过去7天</option>
+                            <option value="30">过去30天</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="district" class="form-label">区域</label>
+                        <select id="district" class="form-select">
+                            <option value="all" selected>全部区域</option>
+                            <option value="云岩区">云岩区</option>
+                            <option value="南明区">南明区</option>
+                            <option value="花溪区">花溪区</option>
+                            <option value="乌当区">乌当区</option>
+                            <option value="白云区">白云区</option>
+                            <option value="观山湖区">观山湖区</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="road-type" class="form-label">道路类型</label>
+                        <select id="road-type" class="form-select">
+                            <option value="all" selected>全部类型</option>
+                            <option value="主干道">主干道</option>
+                            <option value="次干道">次干道</option>
+                            <option value="支路">支路</option>
+                            <option value="快速路">快速路</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="time-period" class="form-label">时间段</label>
+                        <select id="time-period" class="form-select">
+                            <option value="all" selected>全天</option>
+                            <option value="morning_peak">早高峰 (7:00-9:00)</option>
+                            <option value="evening_peak">晚高峰 (17:00-19:00)</option>
+                            <option value="working_hours">工作时间 (9:00-17:00)</option>
+                            <option value="night">夜间 (19:00-7:00)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>分析
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary ms-2" id="reset-filters">
+                            <i class="fas fa-undo me-1"></i>重置
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-area me-2"></i>拥堵指数趋势
+                </h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="congestionTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>拥堵状态分布
+                </h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="congestionDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>各区域拥堵指数对比
+                </h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="districtComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock me-2"></i>一周拥堵时间热力图
+                </h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;" id="heatmapContainer">
+                    <!-- 热力图将在这里渲染 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-table me-2"></i>拥堵路段TOP 10
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>排名</th>
+                                <th>路段名称</th>
+                                <th>所属区域</th>
+                                <th>平均拥堵指数</th>
+                                <th>平均车速</th>
+                                <th>拥堵高峰时段</th>
+                                <th>拥堵频率</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-congested-table">
+                            <!-- 示例数据 -->
+                            <tr>
+                                <td>1</td>
+                                <td>花果园大街</td>
+                                <td>南明区</td>
+                                <td>0.86</td>
+                                <td>15.3 km/h</td>
+                                <td>17:00-19:00</td>
+                                <td>78%</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>金阳大道</td>
+                                <td>观山湖区</td>
+                                <td>0.82</td>
+                                <td>18.1 km/h</td>
+                                <td>7:30-9:30</td>
+                                <td>72%</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>中华北路</td>
+                                <td>云岩区</td>
+                                <td>0.79</td>
+                                <td>19.5 km/h</td>
+                                <td>17:30-19:00</td>
+                                <td>68%</td>
+                            </tr>
+                            <!-- 此处将展示更多行 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 拥堵指数趋势图
+        var trendChart = new Chart(document.getElementById('congestionTrendChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['5/1', '5/2', '5/3', '5/4', '5/5', '5/6', '5/7'],
+                datasets: [{
+                    label: '平均拥堵指数',
+                    data: [0.45, 0.67, 0.58, 0.63, 0.72, 0.52, 0.48],
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1,
+                        title: {
+                            display: true,
+                            text: '拥堵指数'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 拥堵状态分布图
+        var distributionChart = new Chart(document.getElementById('congestionDistributionChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: ['畅通', '轻度拥堵', '中度拥堵', '严重拥堵'],
+                datasets: [{
+                    data: [35, 25, 28, 12],
+                    backgroundColor: [
+                        '#28a745',
+                        '#ffc107',
+                        '#fd7e14',
+                        '#dc3545'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    }
+                }
+            }
+        });
+        
+        // 各区域拥堵指数对比图
+        var districtChart = new Chart(document.getElementById('districtComparisonChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['云岩区', '南明区', '花溪区', '乌当区', '白云区', '观山湖区'],
+                datasets: [{
+                    label: '平均拥堵指数',
+                    data: [0.68, 0.72, 0.58, 0.52, 0.61, 0.65],
+                    backgroundColor: [
+                        'rgba(52, 152, 219, 0.7)',
+                        'rgba(231, 76, 60, 0.7)',
+                        'rgba(241, 196, 15, 0.7)',
+                        'rgba(46, 204, 113, 0.7)',
+                        'rgba(155, 89, 182, 0.7)',
+                        'rgba(230, 126, 34, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1,
+                        title: {
+                            display: true,
+                            text: '拥堵指数'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 热力图示例数据（实际应用中应从后端获取）
+        var heatmapData = [
+            // 24小时 x 7天的数据矩阵
+            // 每行代表一个小时，每列代表一周中的一天
+            // 值表示拥堵指数 (0-1)
+            [0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1], // 0:00
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], // 1:00
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], // 2:00
+            [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], // 3:00
+            [0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1], // 4:00
+            [0.3, 0.3, 0.3, 0.3, 0.3, 0.2, 0.2], // 5:00
+            [0.5, 0.5, 0.5, 0.5, 0.5, 0.3, 0.3], // 6:00
+            [0.8, 0.8, 0.8, 0.8, 0.8, 0.5, 0.4], // 7:00
+            [0.9, 0.9, 0.9, 0.9, 0.9, 0.6, 0.5], // 8:00
+            [0.7, 0.7, 0.7, 0.7, 0.7, 0.5, 0.4], // 9:00
+            [0.6, 0.6, 0.6, 0.6, 0.6, 0.4, 0.3], // 10:00
+            [0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3], // 11:00
+            [0.6, 0.6, 0.6, 0.6, 0.6, 0.5, 0.4], // 12:00
+            [0.6, 0.6, 0.6, 0.6, 0.6, 0.5, 0.4], // 13:00
+            [0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3], // 14:00
+            [0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3], // 15:00
+            [0.6, 0.6, 0.6, 0.6, 0.6, 0.5, 0.4], // 16:00
+            [0.8, 0.8, 0.8, 0.8, 0.8, 0.6, 0.5], // 17:00
+            [0.9, 0.9, 0.9, 0.9, 0.9, 0.7, 0.6], // 18:00
+            [0.7, 0.7, 0.7, 0.7, 0.7, 0.6, 0.5], // 19:00
+            [0.6, 0.6, 0.6, 0.6, 0.6, 0.5, 0.4], // 20:00
+            [0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.3], // 21:00
+            [0.4, 0.4, 0.4, 0.4, 0.4, 0.3, 0.2], // 22:00
+            [0.3, 0.3, 0.3, 0.3, 0.3, 0.2, 0.2], // 23:00
+        ];
+        
+        // 由于我们没有引入专门的热力图库，这里用简单的HTML表格展示热力图效果
+        var heatmapHtml = '<table class="table table-bordered heatmap-table">';
+        heatmapHtml += '<thead><tr><th></th><th>周一</th><th>周二</th><th>周三</th><th>周四</th><th>周五</th><th>周六</th><th>周日</th></tr></thead>';
+        heatmapHtml += '<tbody>';
+        
+        for (var i = 0; i < 24; i++) {
+            heatmapHtml += '<tr>';
+            heatmapHtml += '<td>' + i + ':00</td>';
+            
+            for (var j = 0; j < 7; j++) {
+                var color = getHeatmapColor(heatmapData[i][j]);
+                heatmapHtml += '<td style="background-color: ' + color + ';">' + heatmapData[i][j].toFixed(1) + '</td>';
+            }
+            
+            heatmapHtml += '</tr>';
+        }
+        
+        heatmapHtml += '</tbody></table>';
+        document.getElementById('heatmapContainer').innerHTML = heatmapHtml;
+        
+        // 辅助函数：根据拥堵指数获取对应的颜色
+        function getHeatmapColor(value) {
+            if (value < 0.3) {
+                return 'rgba(40, 167, 69, ' + (value + 0.2) + ')';  // 绿色，畅通
+            } else if (value < 0.5) {
+                return 'rgba(255, 193, 7, ' + (value + 0.2) + ')';  // 黄色，较畅通
+            } else if (value < 0.7) {
+                return 'rgba(253, 126, 20, ' + (value + 0.2) + ')'; // 橙色，轻度拥堵
+            } else {
+                return 'rgba(220, 53, 69, ' + (value + 0.2) + ')';  // 红色，严重拥堵
+            }
+        }
+        
+        // 表单重置功能
+        document.getElementById('reset-filters').addEventListener('click', function() {
+            document.getElementById('analysis-form').reset();
+        });
+        
+        // 表单提交功能
+        document.getElementById('analysis-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            // 这里应该发送AJAX请求获取新的分析数据
+            alert('正在分析数据，实际应用中会发送AJAX请求获取新的分析结果');
+        });
+    });
+</script>
+
+<style>
+    .heatmap-table {
+        width: 100%;
+        font-size: 0.8rem;
+    }
+    
+    .heatmap-table td {
+        text-align: center;
+        color: white;
+        text-shadow: 0 0 1px black;
+    }
+</style>
+{% endblock %} 

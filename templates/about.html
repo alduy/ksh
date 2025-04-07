@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}关于系统 - 贵阳市交通拥堵监测系统{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="fas fa-info-circle me-2"></i>关于系统
+</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">系统简介</h5>
+            </div>
+            <div class="card-body">
+                <p>贵阳市交通拥堵监测系统是一个实时监控、分析和预测城市交通拥堵状况的综合平台。系统通过数据模拟、分析和可视化技术，为城市交通管理部门和出行市民提供交通拥堵状况的实时视图和预测分析。</p>
+                
+                <h6 class="mt-4">系统功能</h6>
+                <ul>
+                    <li>实时监控城市主要路段的交通拥堵情况</li>
+                    <li>在地图上直观展示拥堵路段和拥堵级别</li>
+                    <li>提供拥堵路段实时列表和警报</li>
+                    <li>分析历史拥堵趋势和规律</li>
+                    <li>预测未来几小时的交通拥堵状况</li>
+                </ul>
+                
+                <h6 class="mt-4">数据来源</h6>
+                <p>本系统当前使用模拟数据进行演示。在实际应用中，系统可以接入以下数据源：</p>
+                <ul>
+                    <li>交通监控摄像头实时流数据</li>
+                    <li>交通信号灯系统数据</li>
+                    <li>电子警察系统数据</li>
+                    <li>浮动车GPS数据</li>
+                    <li>地理信息系统(GIS)数据</li>
+                    <li>历史交通数据库</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">技术架构</h5>
+            </div>
+            <div class="card-body">
+                <h6>前端技术</h6>
+                <ul>
+                    <li>HTML5, CSS3, JavaScript</li>
+                    <li>Bootstrap 5 响应式框架</li>
+                    <li>Socket.IO 实时通信</li>
+                    <li>Leaflet 地图可视化</li>
+                    <li>Chart.js 数据图表</li>
+                </ul>
+                
+                <h6 class="mt-3">后端技术</h6>
+                <ul>
+                    <li>Python</li>
+                    <li>Flask Web框架</li>
+                    <li>Flask-SocketIO 实时通信</li>
+                    <li>Pandas 数据处理</li>
+                    <li>Scikit-learn 机器学习</li>
+                </ul>
+                
+                <h6 class="mt-3">数据流程</h6>
+                <p>系统采用模块化设计，主要流程包括：</p>
+                <ol>
+                    <li>数据采集与模拟 → 数据清洗与预处理 → 数据存储</li>
+                    <li>实时数据分析 → 拥堵检测 → 警报生成</li>
+                    <li>历史数据分析 → 模型训练 → 未来状况预测</li>
+                    <li>数据可视化 → 实时推送 → 用户界面展示</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">开发团队</h5>
+            </div>
+            <div class="card-body">
+                <p>本系统由智慧交通团队开发完成，团队成员包括：</p>
+                <ul>
+                    <li>项目负责人</li>
+                    <li>算法工程师</li>
+                    <li>前端开发工程师</li>
+                    <li>后端开发工程师</li>
+                    <li>数据分析师</li>
+                    <li>UI/UX设计师</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">联系方式</h5>
+            </div>
+            <div class="card-body">
+                <address>
+                    <strong>智慧交通团队</strong><br>
+                    贵阳市观山湖区<br>
+                    金阳新区<br>
+                    <i class="fas fa-envelope mt-3 me-1"></i> <a href="mailto:contact@smarttraffic.example.com">contact@smarttraffic.example.com</a><br>
+                    <i class="fas fa-phone me-1"></i> (0851) 8888-8888
+                </address>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">系统版本</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless table-sm">
+                    <tr>
+                        <td>版本</td>
+                        <td>1.0.0</td>
+                    </tr>
+                    <tr>
+                        <td>发布日期</td>
+                        <td>2025-04-06</td>
+                    </tr>
+                    <tr>
+                        <td>许可协议</td>
+                        <td>内部使用</td>
+                    </tr>
+                </table>
+                
+                <div class="text-center mt-3">
+                    <img src="{{ url_for('static', filename='images/qr_code_placeholder.png') }}" alt="联系我们" width="150" class="img-fluid">
+                    <p class="small text-muted mt-2">扫描二维码获取更多信息</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

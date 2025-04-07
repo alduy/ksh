@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}{{ road.name }} 路段详情{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- 路段基本信息卡片 -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">{{ road.road_name }} <small class="text-muted">(#{{ road.road_id }})</small></h3>
+            <span class="badge {% if road.congestion_index < 0.4 %}bg-success{% elif road.congestion_index < 0.6 %}bg-warning{% elif road.congestion_index < 0.8 %}bg-orange{% else %}bg-danger{% endif %} fs-6">
+                {{ road.status }}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th scope="row">所在区域</th>
+                                <td>{{ road.district }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">拥堵指数</th>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar {% if road.congestion_index < 0.4 %}bg-success{% elif road.congestion_index < 0.6 %}bg-warning{% elif road.congestion_index < 0.8 %}bg-orange{% else %}bg-danger{% endif %}" 
+                                             role="progressbar" 
+                                             style="width: {{ road.congestion_index*100 }}%;" 
+                                             aria-valuenow="{{ road.congestion_index*100 }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100">{{ "%.2f"|format(road.congestion_index) }}</div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">平均车速</th>
+                                <td>{{ road.average_speed }} km/h</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">交通流量</th>
+                                <td>{{ road.traffic_flow }} 辆/小时</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">更新时间</th>
+                                <td>{{ road.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <div id="detail-map" style="height: 250px; border-radius: 5px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史趋势图 -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            <h4 class="mb-0">历史拥堵趋势</h4>
+        </div>
+        <div class="card-body">
+            <canvas id="trendChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- 相似路段 -->
+    {% if similar_roads|length > 0 %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header">
+            <h4 class="mb-0">相似路段</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>路段名称</th>
+                            <th>所在区域</th>
+                            <th>拥堵指数</th>
+                            <th>状态</th>
+                            <th>平均车速</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for similar in similar_roads %}
+                        <tr>
+                            <td>{{ similar.road_name }}</td>
+                            <td>{{ similar.district }}</td>
+                            <td>
+                                <div class="progress" style="height: 15px;">
+                                    <div class="progress-bar {% if similar.congestion_index < 0.4 %}bg-success{% elif similar.congestion_index < 0.6 %}bg-warning{% elif similar.congestion_index < 0.8 %}bg-orange{% else %}bg-danger{% endif %}" 
+                                         role="progressbar" 
+                                         style="width: {{ similar.congestion_index*100 }}%;" 
+                                         aria-valuenow="{{ similar.congestion_index*100 }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">{{ "%.2f"|format(similar.congestion_index) }}</div>
+                                </div>
+                            </td>
+                            <td>{{ similar.status }}</td>
+                            <td>{{ similar.average_speed }} km/h</td>
+                            <td><a href="/road/{{ similar.road_id }}" class="btn btn-sm btn-outline-primary">查看</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 返回按钮 -->
+    <div class="d-flex justify-content-between mb-4">
+        <a href="/" class="btn btn-outline-secondary">返回仪表盘</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+<script>
+    // 初始化地图
+    document.addEventListener('DOMContentLoaded', function() {
+        // 定义自定义图标
+        var greenIcon = L.icon({
+            iconUrl: '/static/images/marker-icon-2x-green.png',
+            shadowUrl: '/static/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        var orangeIcon = L.icon({
+            iconUrl: '/static/images/marker-icon-2x-orange.png',
+            shadowUrl: '/static/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        var redIcon = L.icon({
+            iconUrl: '/static/images/marker-icon-2x-red.png',
+            shadowUrl: '/static/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
+        // 获取路段数据
+        const roadData = {
+            roadId: {{ road.road_id }},
+            roadName: "{{ road.road_name }}",
+            district: "{{ road.district }}",
+            latitude: {{ road.latitude }},
+            longitude: {{ road.longitude }},
+            congestionIndex: {{ road.congestion_index }},
+            status: "{{ road.status }}",
+            avgSpeed: {{ road.average_speed }}
+        };
+        
+        // 创建地图
+        const detailMap = L.map('detail-map').setView([roadData.latitude, roadData.longitude], 13);
+        
+        // 使用高德地图 - 高清版本
+        L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=2&style=8&x={x}&y={y}&z={z}', {
+            subdomains: "1234",
+            attribution: '&copy; 高德地图'
+        }).addTo(detailMap);
+        
+        // 选择合适的图标
+        let icon;
+        if (roadData.congestionIndex < 0.4) {
+            icon = greenIcon;
+        } else if (roadData.congestionIndex < 0.7) {
+            icon = orangeIcon;
+        } else {
+            icon = redIcon;
+        }
+        
+        // 添加标记
+        const marker = L.marker([roadData.latitude, roadData.longitude], {icon: icon}).addTo(detailMap);
+        marker.bindPopup(`
+            <strong>${roadData.roadName}</strong><br>
+            区域: ${roadData.district}<br>
+            拥堵指数: ${roadData.congestionIndex.toFixed(2)}<br>
+            状态: ${roadData.status}<br>
+            平均车速: ${roadData.avgSpeed} km/h
+        `).openPopup();
+        
+        // 历史趋势图
+        const trendData = {{ trend_data|tojson }};
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        // 数据准备
+        const labels = trendData.map(item => {
+            const date = new Date(item.timestamp);
+            return date.getHours() + ':00';
+        });
+        
+        const congestionData = trendData.map(item => parseFloat(item.congestion_index));
+        const speedData = trendData.map(item => parseFloat(item.average_speed));
+        
+        // 创建图表
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '拥堵指数',
+                        data: congestionData,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        yAxisID: 'y',
+                        tension: 0.3
+                    },
+                    {
+                        label: '平均车速 (km/h)',
+                        data: speedData,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        yAxisID: 'y1',
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                stacked: false,
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: '拥堵指数'
+                        },
+                        min: 0,
+                        max: 1
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: '平均车速 (km/h)'
+                        },
+                        min: 0,
+                        grid: {
+                            drawOnChartArea: false,
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

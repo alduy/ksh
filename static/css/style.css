@@ -1,0 +1,118 @@
+/* 贵阳市交通拥堵监测系统 - 自定义样式 */
+
+/* 地图样式 */
+#map {
+    height: 550px;
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 状态徽章 */
+.status-badge {
+    font-size: 0.85rem;
+    padding: 0.25em 0.6em;
+}
+
+.status-normal {
+    background-color: #28a745;
+}
+
+.status-light {
+    background-color: #ffc107;
+}
+
+.status-moderate {
+    background-color: #fd7e14;
+}
+
+.status-heavy {
+    background-color: #dc3545;
+}
+
+/* 拥堵卡片动画 */
+.congestion-card {
+    transition: all 0.3s ease;
+}
+
+.congestion-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 警报面板 */
+.alert-panel {
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+/* 趋势图容器 */
+.trend-chart-container {
+    height: 320px;
+}
+
+/* 仪表板卡片 */
+.card-dashboard {
+    height: 100%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+}
+
+/* 统计卡片 */
+.stat-card {
+    border-left: 4px solid;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: scale(1.02);
+}
+
+.stat-card.congestion {
+    border-left-color: #dc3545;
+}
+
+.stat-card.speed {
+    border-left-color: #17a2b8;
+}
+
+.stat-card.flow {
+    border-left-color: #ffc107;
+}
+
+/* 为Bootstrap中不存在的类添加样式 */
+.bg-orange {
+    background-color: #fd7e14;
+    color: #fff;
+}
+
+/* 预测页面特定样式 */
+.prediction-label {
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding-left: 5px;
+}
+
+.prediction-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* 分析页面特定样式 */
+.analysis-filter {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    #map {
+        height: 400px;
+    }
+    
+    .trend-chart-container {
+        height: 250px;
+    }
+} 

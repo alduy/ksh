@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}拥堵预测 - 贵阳市交通拥堵监测系统{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">
+    <i class="fas fa-chart-bar me-2"></i>交通拥堵预测
+</h2>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock me-2"></i>未来3小时交通拥堵预测
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if predictions %}
+                    <div class="row">
+                        {% for prediction in predictions %}
+                            <div class="col-md-4">
+                                <div class="card mb-4 congestion-card">
+                                    <div class="card-header 
+                                        {% if prediction.avg_congestion < 0.4 %}bg-success text-white
+                                        {% elif prediction.avg_congestion < 0.6 %}bg-warning 
+                                        {% elif prediction.avg_congestion < 0.8 %}bg-orange text-white
+                                        {% else %}bg-danger text-white{% endif %}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">{{ prediction.timestamp|replace(' ', ' ')|replace('-', '/')|replace(':00:00', '') }}</h5>
+                                            <span class="badge bg-light text-dark">{{ prediction.hour }}:00</span>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row mb-3">
+                                            <div class="col-6">
+                                                <span class="prediction-label text-muted">平均拥堵指数:</span>
+                                                <div class="prediction-value">{{ "%.2f"|format(prediction.avg_congestion) }}</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <span class="prediction-label text-muted">拥堵路段数:</span>
+                                                <div class="prediction-value">{{ prediction.congested_count }}</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <h6 class="mt-4 mb-2">预计路段状态分布:</h6>
+                                        <div class="mb-2">
+                                            {% if prediction.status_counts.get('畅通', 0) > 0 %}
+                                                <span class="badge bg-success me-1">
+                                                    畅通: {{ prediction.status_counts.get('畅通', 0) }}
+                                                </span>
+                                            {% endif %}
+                                            
+                                            {% if prediction.status_counts.get('轻度拥堵', 0) > 0 %}
+                                                <span class="badge bg-warning me-1">
+                                                    轻度拥堵: {{ prediction.status_counts.get('轻度拥堵', 0) }}
+                                                </span>
+                                            {% endif %}
+                                            
+                                            {% if prediction.status_counts.get('中度拥堵', 0) > 0 %}
+                                                <span class="badge bg-orange me-1">
+                                                    中度拥堵: {{ prediction.status_counts.get('中度拥堵', 0) }}
+                                                </span>
+                                            {% endif %}
+                                            
+                                            {% if prediction.status_counts.get('严重拥堵', 0) > 0 %}
+                                                <span class="badge bg-danger me-1">
+                                                    严重拥堵: {{ prediction.status_counts.get('严重拥堵', 0) }}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="progress mt-4" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: {{ prediction.status_counts.get('畅通', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
+                                            <div class="progress-bar bg-warning" style="width: {{ prediction.status_counts.get('轻度拥堵', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
+                                            <div class="progress-bar bg-orange" style="width: {{ prediction.status_counts.get('中度拥堵', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
+                                            <div class="progress-bar bg-danger" style="width: {{ prediction.status_counts.get('严重拥堵', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
+                                        </div>
+                                        
+                                        <div class="text-muted mt-3 small">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            预测基于历史数据和当前交通状况
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-circle fa-3x text-muted mb-3"></i>
+                        <p>无法生成交通预测</p>
+                        <small class="text-muted">可能需要更多交通数据或者模型尚未完成训练</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>预测说明
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>预测方法</h6>
+                        <p>本系统使用机器学习算法基于历史交通数据和当前实时数据进行预测。预测模型考虑了时间因素（如一天中的时间、星期几）以及当前交通流量、车速等特征。</p>
+                        
+                        <h6>预测因素</h6>
+                        <ul>
+                            <li>时间特征（小时、星期几）</li>
+                            <li>交通流量</li>
+                            <li>平均车速</li>
+                            <li>历史拥堵模式</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>预测准确性</h6>
+                        <p>预测结果仅供参考，实际交通状况可能受到天气、事故、活动等多种因素影响而发生变化。随着更多数据的收集，预测模型会不断优化，准确性也将逐步提高。</p>
+                        
+                        <h6>交通状态分类</h6>
+                        <ul>
+                            <li><span class="badge bg-success">畅通</span> - 拥堵指数 < 0.4</li>
+                            <li><span class="badge bg-warning">轻度拥堵</span> - 拥堵指数 0.4-0.6</li>
+                            <li><span class="badge bg-orange">中度拥堵</span> - 拥堵指数 0.6-0.8</li>
+                            <li><span class="badge bg-danger">严重拥堵</span> - 拥堵指数 > 0.8</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,16 @@
+flask==2.2.5
+flask-socketio==5.3.7  # 修正为PyPI存在的最高版本
+apscheduler==3.10.1
+werkzeug==2.2.3
+numpy==1.26.4
+pandas==2.2.0
+scikit-learn==1.4.0
+matplotlib==3.8.2
+gevent==23.9.1
+eventlet==0.35.0
+python-dotenv==1.0.0
+folium==0.16.0
+faker==24.9.0
+requests==2.31.0
+sqlalchemy==2.0.25
+setuptools==69.2.0  # 添加此依赖解决pkgutil兼容性问题
