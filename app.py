@@ -81,13 +81,26 @@ def dashboard():
     global current_traffic_data
     if current_traffic_data.empty:
         current_traffic_data = data_generator.get_real_time_data()
+        print(f"初始化数据: 获取了 {len(current_traffic_data)} 条路段数据")
     
     # 准备地图数据
-    map_data = json.loads(data_processor.prepare_map_data(current_traffic_data))
+    map_data = data_processor.prepare_map_data(current_traffic_data)
+    # 检查是否为空或有效的JSON
+    try:
+        map_data_json = json.loads(map_data)
+        road_count = 0
+        if isinstance(map_data_json, list):
+            road_count = len(map_data_json)
+        elif isinstance(map_data_json, dict) and 'features' in map_data_json:
+            road_count = len(map_data_json['features'])
+        print(f"地图数据准备完成: {road_count} 条路段")
+    except Exception as e:
+        print(f"地图数据解析错误: {str(e)}")
+        map_data = '[]'  # 默认空数组
     
     # 准备拥堵路段列表
     # 确保congestion_list包含完整的road对象
-    congestion_list = json.loads(data_processor.prepare_congestion_list(current_traffic_data))
+    congestion_list = data_processor.prepare_congestion_list(current_traffic_data)
     
     # 准备警报数据
     try:
@@ -107,13 +120,14 @@ def dashboard():
     try:
         stats_json = data_processor.prepare_statistics(current_traffic_data)
         stats = json.loads(stats_json)
+        print(f"统计数据: 路段数={len(current_traffic_data)}, 拥堵指数={stats.get('avg_congestion', 0)}, 车速={stats.get('avg_speed', 0)}")
     except Exception as e:
         print(f"统计数据准备失败: {str(e)}")
         stats = {'avg_congestion': 0, 'avg_speed': 0}
 
     return render_template('dashboard.html',
                         active_page='dashboard',
-                        map_data=json.dumps(map_data),
+                        map_data=map_data,  # 直接传递原始JSON字符串
                         congested_roads=congestion_list,
                         alerts=alerts if alerts else [],  # 确保传递空列表而不是None
                         trend_data=trend_data,  # 已确保初始化
@@ -218,18 +232,42 @@ def background_thread():
             # 获取当前数据
             with data_lock:
                 if not current_traffic_data.empty:
-                    # 准备数据
-                    update_data = {
-                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'map_data': json.loads(data_processor.prepare_map_data(current_traffic_data)),
-                        'congestion_list': json.loads(data_processor.prepare_congestion_list(current_traffic_data)),
-                        'alerts': json.loads(data_processor.prepare_alert_data(current_traffic_data)),
-                        'stats': json.loads(data_processor.prepare_statistics(current_traffic_data))
-                    }
-                    
-                    # 发送更新
-                    socketio.emit('traffic_update', update_data)
-                    print(f"SocketIO实时更新已发送: {datetime.now()}")
+                    # 准备数据并检查格式
+                    try:
+                        map_data = data_processor.prepare_map_data(current_traffic_data)
+                        map_data_json = json.loads(map_data)
+                        
+                        congestion_list = data_processor.prepare_congestion_list(current_traffic_data)
+                        congestion_list_json = json.loads(congestion_list)
+                        
+                        alert_data = data_processor.prepare_alert_data(current_traffic_data)
+                        alerts_json = json.loads(alert_data)
+                        
+                        stats_json = json.loads(data_processor.prepare_statistics(current_traffic_data))
+                        
+                        # 数据检查和调试输出
+                        road_count = 0
+                        if isinstance(map_data_json, list):
+                            road_count = len(map_data_json)
+                        elif isinstance(map_data_json, dict) and 'features' in map_data_json:
+                            road_count = len(map_data_json['features'])
+                        
+                        print(f"WebSocket更新: 发送 {road_count} 条路段数据, " +
+                              f"{len(congestion_list_json)} 条拥堵路段, " +
+                              f"{len(alerts_json)} 条警报")
+                        
+                        # 发送更新
+                        update_data = {
+                            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            'map_data': map_data_json,  # 发送解析后的JSON对象
+                            'congestion_list': congestion_list_json,
+                            'alerts': alerts_json,
+                            'stats': stats_json
+                        }
+                        socketio.emit('traffic_update', update_data)
+                        print(f"SocketIO实时更新已发送: {datetime.now()}")
+                    except Exception as e:
+                        print(f"准备WebSocket数据时发生错误: {str(e)}")
         except Exception as e:
             print(f"SocketIO后台线程错误: {e}")
             

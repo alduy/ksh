@@ -187,6 +187,21 @@ class TrafficDataGenerator:
         current_hour = current_time.hour
         time_factor = self._get_time_factor(current_hour)
         
+        # 确保道路段定义正确
+        if not self.road_segments or len(self.road_segments) == 0:
+            print("警告: 没有定义的路段，重新生成路段定义")
+            self.road_segments = self._generate_road_segments()
+            if not self.road_segments:
+                print("错误: 无法生成路段定义")
+                # 返回空DataFrame但确保列存在
+                return pd.DataFrame({
+                    'segment_id': [], 'road_name': [], 'district': [], 
+                    'traffic_flow': [], 'average_speed': [], 'congestion_index': [],
+                    'status': [], 'timestamp': [], 'latitude': [], 'longitude': []
+                })
+        
+        print(f"开始生成实时数据，共 {len(self.road_segments)} 个路段")
+        
         # 为每个路段生成数据
         real_time_data = []
         for segment in self.road_segments:
@@ -225,6 +240,9 @@ class TrafficDataGenerator:
         # 再次检查并清理任何NaN值
         for col in df.columns:
             if df[col].isna().any():
+                count_nan = df[col].isna().sum()
+                print(f"警告: 列 {col} 包含 {count_nan} 个NaN值，进行修复")
+                
                 if col == 'congestion_index':
                     df[col] = df[col].fillna(0.3)
                 elif col == 'average_speed':
@@ -242,10 +260,22 @@ class TrafficDataGenerator:
                     df[col] = df[col].fillna('')
         
         # 添加到历史数据（可选，视内存使用情况而定）
-        self.historical_data = pd.concat([self.historical_data, df], ignore_index=True)
+        if len(df) > 0:
+            self.historical_data = pd.concat([self.historical_data, df], ignore_index=True)
         
         # 打印一条调试信息，确认数据是否正常
         print(f"生成了 {len(df)} 条路段数据，监控路段数: {df['segment_id'].nunique()}")
+        
+        # 额外的数据检查
+        if len(df) == 0:
+            print("警告: 生成的数据为空!")
+        
+        # 打印一些示例数据
+        if not df.empty:
+            print("示例数据:")
+            sample = df.head(1).to_dict('records')[0]
+            for key, value in sample.items():
+                print(f"  {key}: {value}")
         
         return df
     

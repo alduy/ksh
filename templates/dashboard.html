@@ -1182,8 +1182,33 @@
         // 安全获取值，并设置默认值
         const avgCongestion = isNaN(stats.avg_congestion) ? 0.3 : parseFloat(stats.avg_congestion);
         const avgSpeed = isNaN(stats.avg_speed) ? 40.0 : parseFloat(stats.avg_speed);
-        const roadCount = data.map_data && Array.isArray(data.map_data) ? data.map_data.length : 0;
+        
+        // 计算道路数量 - 修复格式处理逻辑
+        let roadCount = 0;
+        if (data.map_data) {
+            if (Array.isArray(data.map_data)) {
+                roadCount = data.map_data.length;
+            } else if (data.map_data.features && Array.isArray(data.map_data.features)) {
+                roadCount = data.map_data.features.length;
+            } else if (typeof data.map_data === 'string') {
+                try {
+                    // 尝试解析JSON字符串
+                    const parsedData = JSON.parse(data.map_data);
+                    if (Array.isArray(parsedData)) {
+                        roadCount = parsedData.length;
+                    } else if (parsedData.features && Array.isArray(parsedData.features)) {
+                        roadCount = parsedData.features.length;
+                    }
+                } catch (e) {
+                    console.warn("无法解析地图数据字符串", e);
+                }
+            }
+        }
+        
+        // 安全获取警报数量
         const alertCount = data.alerts && Array.isArray(data.alerts) ? data.alerts.length : 0;
+        
+        console.log(`数据更新: 拥堵指数=${avgCongestion}, 车速=${avgSpeed}, 路段数=${roadCount}, 警报数=${alertCount}`);
         
         // 使用动画更新统计数据
         animateValue('avg-congestion', currentCongestion, avgCongestion, 1000);
@@ -1196,7 +1221,7 @@
         animateValue('heavy-congestion-count', currentAlertCount, alertCount, 800);
         
         // 安全地更新地图
-        if (data.map_data && Array.isArray(data.map_data) && data.map_data.length > 0) {
+        if (data.map_data) {
             updateMapMarkers(data.map_data);
         } else {
             console.warn("地图数据为空或格式不正确");
@@ -1422,15 +1447,48 @@
     // 确保在页面加载后调用一次标记更新
     document.addEventListener('DOMContentLoaded', function() {
         console.log('初始化地图标记...');
-        console.log('数据项数:', initialMapData.length);
-        // 调试输出一些数据以确认格式
-        if(initialMapData && initialMapData.length > 0) {
-            console.log('第一条数据示例:', JSON.stringify(initialMapData[0]));
-        }
-        updateMapMarkers(initialMapData);
         
-        // 为初始拥堵列表添加点击功能
-        initializeInitialCongestionList();
+        // 确保initialMapData是有效的
+        if (!initialMapData) {
+            console.error('初始地图数据无效');
+            showToast('初始地图数据加载失败', 'error');
+            return;
+        }
+        
+        // 计算并显示正确的路段数
+        let roadCount = 0;
+        if (Array.isArray(initialMapData)) {
+            roadCount = initialMapData.length;
+            console.log('数据项数(数组):', roadCount);
+        } else if (initialMapData.features && Array.isArray(initialMapData.features)) {
+            roadCount = initialMapData.features.length;
+            console.log('数据项数(GeoJSON):', roadCount);
+        } else {
+            console.warn('无法确定初始数据类型:', typeof initialMapData);
+        }
+        
+        // 更新显示的路段数量
+        const roadCountElement = document.getElementById('road-count');
+        if (roadCountElement) {
+            roadCountElement.textContent = roadCount;
+        }
+        
+        // 调试输出一些数据以确认格式
+        if(roadCount > 0) {
+            if (Array.isArray(initialMapData) && initialMapData.length > 0) {
+                console.log('第一条数据示例:', JSON.stringify(initialMapData[0]));
+            } else if (initialMapData.features && initialMapData.features.length > 0) {
+                console.log('第一条特征示例:', JSON.stringify(initialMapData.features[0]));
+            }
+            
+            updateMapMarkers(initialMapData);
+            
+            // 为初始拥堵列表添加点击功能
+            initializeInitialCongestionList();
+        } else {
+            console.warn('初始化时没有路段数据');
+            showToast('没有可显示的路段数据', 'warning');
+        }
     });
     
     // 更新拥堵列表并添加交互功能
