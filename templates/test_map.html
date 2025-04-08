@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地图测试页面</title>
+    <!-- 引入Leaflet库 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .debug-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>贵阳市交通拥堵地图测试</h1>
+        
+        <!-- 地图容器 -->
+        <div id="map"></div>
+        
+        <!-- 调试信息 -->
+        <div class="debug-info" id="debug-info">等待地图初始化...</div>
+    </div>
+
+    <script>
+        // 调试日志函数
+        function log(message) {
+            const debugInfo = document.getElementById('debug-info');
+            const timestamp = new Date().toLocaleTimeString();
+            debugInfo.innerHTML += `\n[${timestamp}] ${message}`;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        // 初始化地图 - 使用贵阳市中心坐标
+        function initMap() {
+            try {
+                log("开始初始化地图...");
+                
+                // 贵阳市中心坐标
+                const guiyangCenter = [26.598194, 106.707410];
+                
+                log("创建地图对象...");
+                const map = L.map('map').setView(guiyangCenter, 12);
+                
+                log("添加底图图层...");
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+                
+                log("添加标记点...");
+                // 添加一个简单的标记点
+                L.marker(guiyangCenter)
+                    .addTo(map)
+                    .bindPopup("贵阳市中心")
+                    .openPopup();
+                
+                log("地图初始化完成！");
+                return map;
+            } catch (error) {
+                log(`地图初始化失败: ${error.message}`);
+                console.error("地图初始化错误:", error);
+            }
+        }
+
+        // 加载测试数据
+        function loadTestData(map) {
+            try {
+                log("加载测试数据...");
+                
+                // 模拟数据点
+                const testPoints = [
+                    { name: "测试点1", lat: 26.608194, lng: 106.717410, congestion: 0.3 },
+                    { name: "测试点2", lat: 26.588194, lng: 106.697410, congestion: 0.6 },
+                    { name: "测试点3", lat: 26.618194, lng: 106.727410, congestion: 0.9 }
+                ];
+                
+                // 为每个测试点创建标记
+                testPoints.forEach(point => {
+                    const color = point.congestion < 0.4 ? 'green' : 
+                                 point.congestion < 0.7 ? 'orange' : 'red';
+                    
+                    const circleMarker = L.circleMarker([point.lat, point.lng], {
+                        radius: 8,
+                        fillColor: color,
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    circleMarker.bindPopup(`
+                        <div>
+                            <strong>${point.name}</strong><br>
+                            拥堵指数: ${point.congestion.toFixed(2)}
+                        </div>
+                    `);
+                });
+                
+                log("测试数据加载完成！");
+            } catch (error) {
+                log(`测试数据加载失败: ${error.message}`);
+                console.error("测试数据加载错误:", error);
+            }
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            log("页面加载完成，准备初始化地图...");
+            const map = initMap();
+            if (map) {
+                loadTestData(map);
+            }
+        });
+    </script>
+</body>
+</html> 

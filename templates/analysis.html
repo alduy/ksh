@@ -189,8 +189,8 @@
 <div class="analysis-container">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">
-            <i class="fas fa-chart-line me-2"></i>交通数据分析
-        </h2>
+    <i class="fas fa-chart-line me-2"></i>交通数据分析
+</h2>
         <div>
             <span id="update-time" class="badge bg-light text-dark">
                 <i class="far fa-clock me-1"></i>更新于: {{ current_time }}
@@ -213,52 +213,52 @@
                 </button>
             </div>
         </div>
-        <div class="card-body">
-            <form id="analysis-form" class="row g-3">
-                <div class="col-md-3">
-                    <label for="date-range" class="form-label">日期范围</label>
-                    <select id="date-range" class="form-select">
-                        <option value="1">过去1天</option>
-                        <option value="3">过去3天</option>
-                        <option value="7" selected>过去7天</option>
-                        <option value="30">过去30天</option>
+            <div class="card-body">
+                <form id="analysis-form" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="date-range" class="form-label">日期范围</label>
+                        <select id="date-range" class="form-select">
+                            <option value="1">过去1天</option>
+                            <option value="3">过去3天</option>
+                            <option value="7" selected>过去7天</option>
+                            <option value="30">过去30天</option>
                         <option value="90">过去3个月</option>
-                        <option value="custom">自定义</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="district" class="form-label">区域</label>
-                    <select id="district" class="form-select">
-                        <option value="all" selected>全部区域</option>
-                        <option value="云岩区">云岩区</option>
-                        <option value="南明区">南明区</option>
-                        <option value="花溪区">花溪区</option>
-                        <option value="乌当区">乌当区</option>
-                        <option value="白云区">白云区</option>
-                        <option value="观山湖区">观山湖区</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="road-type" class="form-label">道路类型</label>
-                    <select id="road-type" class="form-select">
-                        <option value="all" selected>全部类型</option>
-                        <option value="主干道">主干道</option>
-                        <option value="次干道">次干道</option>
-                        <option value="支路">支路</option>
-                        <option value="快速路">快速路</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="time-period" class="form-label">时间段</label>
-                    <select id="time-period" class="form-select">
-                        <option value="all" selected>全天</option>
-                        <option value="morning_peak">早高峰 (7:00-9:00)</option>
-                        <option value="evening_peak">晚高峰 (17:00-19:00)</option>
-                        <option value="working_hours">工作时间 (9:00-17:00)</option>
-                        <option value="night">夜间 (19:00-7:00)</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="district" class="form-label">区域</label>
+                        <select id="district" class="form-select">
+                            <option value="all" selected>全部区域</option>
+                            <option value="云岩区">云岩区</option>
+                            <option value="南明区">南明区</option>
+                            <option value="花溪区">花溪区</option>
+                            <option value="乌当区">乌当区</option>
+                            <option value="白云区">白云区</option>
+                            <option value="观山湖区">观山湖区</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="road-type" class="form-label">道路类型</label>
+                        <select id="road-type" class="form-select">
+                            <option value="all" selected>全部类型</option>
+                            <option value="主干道">主干道</option>
+                            <option value="次干道">次干道</option>
+                            <option value="支路">支路</option>
+                            <option value="快速路">快速路</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="time-period" class="form-label">时间段</label>
+                        <select id="time-period" class="form-select">
+                            <option value="all" selected>全天</option>
+                            <option value="morning_peak">早高峰 (7:00-9:00)</option>
+                            <option value="evening_peak">晚高峰 (17:00-19:00)</option>
+                            <option value="working_hours">工作时间 (9:00-17:00)</option>
+                            <option value="night">夜间 (19:00-7:00)</option>
                         <option value="custom">自定义时间段</option>
-                    </select>
-                </div>
+                        </select>
+                    </div>
                 <div class="col-12">
                     <div id="active-filters" class="mb-3 d-none">
                         <div class="small mb-1 text-muted">已应用的筛选条件:</div>
@@ -281,10 +281,10 @@
                             <i class="fas fa-search me-1"></i>分析
                         </button>
                     </div>
-                </div>
-            </form>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
     
     <!-- 分析总览 -->
     <div class="card analysis-card mb-4">
@@ -297,10 +297,10 @@
                 <button class="time-btn" data-period="week">本周</button>
                 <button class="time-btn" data-period="month">本月</button>
                 <button class="time-btn" data-period="year">全年</button>
-            </div>
-        </div>
+    </div>
+</div>
         <div class="card-body">
-            <div class="row mb-4">
+<div class="row mb-4">
                 <div class="col-md-3 mb-3 mb-md-0">
                     <div class="card h-100 border-0 bg-light">
                         <div class="card-body">
@@ -374,24 +374,24 @@
         <div class="col-md-7 mb-4">
             <div class="card analysis-card h-100">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-chart-line me-2 text-primary"></i>拥堵指数趋势分析
-                    </h5>
+                </h5>
                     <div class="btn-group btn-group-sm">
                         <button type="button" class="btn btn-outline-secondary active" data-chart-view="day">日视图</button>
                         <button type="button" class="btn btn-outline-secondary" data-chart-view="week">周视图</button>
                         <button type="button" class="btn btn-outline-secondary" data-chart-view="month">月视图</button>
                     </div>
-                </div>
-                <div class="card-body">
+            </div>
+            <div class="card-body">
                     <div class="chart-container">
                         <canvas id="multiDimensionalChart"></canvas>
-                    </div>
+                </div>
                     <div class="chart-legend mt-3">
                         <div class="legend-item">
                             <div class="legend-color" style="background-color: rgba(220, 53, 69, 0.8);"></div>
                             <span>早高峰 (7:00-9:00)</span>
-                        </div>
+            </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background-color: rgba(255, 193, 7, 0.8);"></div>
                             <span>工作时段 (9:00-17:00)</span>
@@ -406,41 +406,41 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
-        
+    </div>
+    
         <!-- 区域对比雷达图 -->
         <div class="col-md-5 mb-4">
             <div class="card analysis-card h-100">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-radar me-2 text-primary"></i>区域交通状况雷达图
-                    </h5>
+                </h5>
                     <div class="btn-group btn-group-sm">
                         <button type="button" class="btn btn-outline-secondary active" data-radar-type="congestion">拥堵指数</button>
                         <button type="button" class="btn btn-outline-secondary" data-radar-type="speed">平均车速</button>
                     </div>
-                </div>
-                <div class="card-body">
+            </div>
+            <div class="card-body">
                     <div class="chart-container">
                         <canvas id="districtRadarChart"></canvas>
                     </div>
                     <div class="small text-muted text-center mt-3">
                         该雷达图展示了贵阳市各区域的交通状况对比，数值越高表示拥堵越严重。
-                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
+</div>
+
     <div class="row">
         <!-- 拥堵状态分布 -->
         <div class="col-lg-5 mb-4">
             <div class="card analysis-card h-100">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-chart-pie me-2 text-primary"></i>拥堵状态分布分析
-                    </h5>
+                </h5>
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="distChartDropdown" data-bs-toggle="dropdown">
                             图表类型
@@ -450,7 +450,7 @@
                             <li><a class="dropdown-item" href="#" data-dist-chart="doughnut">环形图</a></li>
                             <li><a class="dropdown-item" href="#" data-dist-chart="polar">极区图</a></li>
                         </ul>
-                    </div>
+            </div>
                 </div>
                 <div class="card-body d-flex flex-column">
                     <div class="mb-2 text-center">
@@ -491,27 +491,27 @@
                             </div>
                         </div>
                     </div>
-                </div>
             </div>
         </div>
-        
+    </div>
+    
         <!-- 周度热力图 -->
         <div class="col-lg-7 mb-4">
             <div class="card analysis-card h-100">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-th me-2 text-primary"></i>交通拥堵周度热力图
-                    </h5>
+                </h5>
                     <div class="btn-group btn-group-sm" role="group">
                         <button type="button" class="btn btn-outline-primary active" data-heatmap="congestion">拥堵指数</button>
                         <button type="button" class="btn btn-outline-primary" data-heatmap="flow">流量</button>
                         <button type="button" class="btn btn-outline-primary" data-heatmap="speed">速度</button>
                     </div>
-                </div>
-                <div class="card-body">
+            </div>
+            <div class="card-body">
                     <div id="heatmapContainer">
-                        <!-- 热力图将在这里渲染 -->
-                    </div>
+                    <!-- 热力图将在这里渲染 -->
+                </div>
                     <div class="mt-3 d-flex justify-content-center">
                         <div style="width: 300px; height: 20px; background: linear-gradient(to right, rgba(40, 167, 69, 0.7), rgba(255, 193, 7, 0.7), rgba(253, 126, 20, 0.7), rgba(220, 53, 69, 0.7))"></div>
                     </div>
@@ -521,24 +521,24 @@
                         <span>中度拥堵 (0.7)</span>
                         <span>严重拥堵 (1.0)</span>
                     </div>
-                </div>
             </div>
         </div>
     </div>
-    
+</div>
+
     <!-- 拥堵路段 TOP 分析 -->
     <div class="card analysis-card">
         <div class="card-header">
-            <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                 <i class="fas fa-list-ol me-2 text-primary"></i>拥堵路段 TOP 10 详细分析
-            </h5>
+                </h5>
             <div>
                 <button class="btn btn-sm btn-outline-primary" id="export-data">
                     <i class="fas fa-file-export me-1"></i>导出数据
                 </button>
             </div>
-        </div>
-        <div class="card-body">
+            </div>
+            <div class="card-body">
             <ul class="nav nav-tabs mb-3" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="roads-avg-tab" data-bs-toggle="tab" data-bs-target="#roads-avg" type="button" role="tab">平均拥堵指数</button>
@@ -555,25 +555,25 @@
             </ul>
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="roads-avg" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>排名</th>
-                                    <th>路段名称</th>
-                                    <th>所属区域</th>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>排名</th>
+                                <th>路段名称</th>
+                                <th>所属区域</th>
                                     <th style="width: 15%">平均拥堵指数</th>
-                                    <th>平均车速</th>
-                                    <th>拥堵高峰时段</th>
-                                    <th>拥堵频率</th>
+                                <th>平均车速</th>
+                                <th>拥堵高峰时段</th>
+                                <th>拥堵频率</th>
                                     <th>拥堵变化</th>
-                                </tr>
-                            </thead>
-                            <tbody id="top-congested-table">
-                                <tr>
-                                    <td>1</td>
+                            </tr>
+                        </thead>
+                        <tbody id="top-congested-table">
+                            <tr>
+                                <td>1</td>
                                     <td><a href="#" class="text-decoration-none">花果园大街</a></td>
-                                    <td>南明区</td>
+                                <td>南明区</td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <span class="me-2">0.86</span>
@@ -582,15 +582,15 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>15.3 km/h</td>
-                                    <td>17:00-19:00</td>
-                                    <td>78%</td>
+                                <td>15.3 km/h</td>
+                                <td>17:00-19:00</td>
+                                <td>78%</td>
                                     <td><span class="text-danger"><i class="fas fa-arrow-up"></i> 3%</span></td>
-                                </tr>
-                                <tr>
-                                    <td>2</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
                                     <td><a href="#" class="text-decoration-none">金阳大道</a></td>
-                                    <td>观山湖区</td>
+                                <td>观山湖区</td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <span class="me-2">0.82</span>
@@ -599,15 +599,15 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>18.1 km/h</td>
-                                    <td>7:30-9:30</td>
-                                    <td>72%</td>
+                                <td>18.1 km/h</td>
+                                <td>7:30-9:30</td>
+                                <td>72%</td>
                                     <td><span class="text-success"><i class="fas fa-arrow-down"></i> 2%</span></td>
-                                </tr>
-                                <tr>
-                                    <td>3</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
                                     <td><a href="#" class="text-decoration-none">中华北路</a></td>
-                                    <td>云岩区</td>
+                                <td>云岩区</td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <span class="me-2">0.79</span>
@@ -616,16 +616,16 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>19.5 km/h</td>
-                                    <td>17:30-19:00</td>
-                                    <td>68%</td>
+                                <td>19.5 km/h</td>
+                                <td>17:30-19:00</td>
+                                <td>68%</td>
                                     <td><span class="text-danger"><i class="fas fa-arrow-up"></i> 5%</span></td>
-                                </tr>
+                            </tr>
                                 <!-- 更多行 -->
-                            </tbody>
-                        </table>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
+            </div>
                 <div class="tab-pane fade" id="roads-peak" role="tabpanel">
                     <!-- 高峰期拥堵内容 -->
                     <div class="alert alert-info">
@@ -1171,7 +1171,7 @@
         // 准备数据
         const congestionData = {
             labels: ['云岩区', '南明区', '花溪区', '乌当区', '白云区', '观山湖区'],
-            datasets: [{
+                datasets: [{
                 label: '拥堵指数',
                 data: [0.68, 0.72, 0.58, 0.52, 0.61, 0.65],
                 backgroundColor: 'rgba(55, 114, 255, 0.3)',
@@ -1317,9 +1317,9 @@
         // 准备本周数据
         const thisWeekData = {
             labels: ['畅通', '轻度拥堵', '中度拥堵', '严重拥堵'],
-            datasets: [{
+                datasets: [{
                 data: [35, 25, 28, 12],
-                backgroundColor: [
+                    backgroundColor: [
                     'rgba(40, 167, 69, 0.8)',  // 畅通-绿色
                     'rgba(255, 193, 7, 0.8)',  // 轻度-黄色
                     'rgba(253, 126, 20, 0.8)', // 中度-橙色
@@ -1437,7 +1437,7 @@
                         }
                     },
                     datalabels: {
-                        display: true,
+                            display: true,
                         color: '#fff',
                         font: {
                             weight: 'bold',
@@ -1627,13 +1627,13 @@
             value = 1 - value;
         }
         
-        if (value < 0.3) {
+            if (value < 0.3) {
             return `rgba(40, 167, 69, ${Math.max(0.5, value + 0.3)})`;  // 绿色，畅通
-        } else if (value < 0.5) {
+            } else if (value < 0.5) {
             return `rgba(255, 193, 7, ${Math.max(0.5, value + 0.2)})`;  // 黄色，较畅通
-        } else if (value < 0.7) {
+            } else if (value < 0.7) {
             return `rgba(253, 126, 20, ${Math.max(0.5, value + 0.2)})`; // 橙色，轻度拥堵
-        } else {
+            } else {
             return `rgba(220, 53, 69, ${Math.max(0.5, value + 0.2)})`;  // 红色，严重拥堵
         }
     }

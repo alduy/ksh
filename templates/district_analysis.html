@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}区域拥堵分析 - 贵阳市交通拥堵监测系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .district-card {
+        border-radius: 10px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+        border: none;
+    }
+    
+    .district-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+    }
+    
+    .district-card .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        font-size: 1.2rem;
+        padding: 0.8rem 1.2rem;
+    }
+    
+    .district-card .card-body {
+        padding: 1.2rem;
+    }
+    
+    .district-status {
+        font-size: 0.8rem;
+        border-radius: 10px;
+        padding: 2px 10px;
+        display: inline-block;
+    }
+    
+    .congestion-status-bar {
+        height: 6px;
+        border-radius: 3px;
+        background-color: #f0f0f0;
+        margin-top: 5px;
+        overflow: hidden;
+    }
+    
+    .congestion-status-value {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 1s ease-in-out;
+    }
+    
+    .severe {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+    }
+    
+    .moderate {
+        background-color: rgba(255, 193, 7, 0.2);
+        color: #fd7e14;
+    }
+    
+    .free {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        border-radius: 10px;
+        padding: 2px 8px;
+        margin-right: 5px;
+        white-space: nowrap;
+    }
+    
+    .road-count-detail {
+        display: flex;
+        align-items: center;
+        margin-top: 10px;
+    }
+    
+    .road-count-detail .badge {
+        margin-right: 10px;
+        font-size: 0.75rem;
+        padding: 5px 8px;
+    }
+    
+    .overview-card {
+        border-radius: 8px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        border: none;
+    }
+    
+    .overview-card .card-body {
+        padding: 20px;
+    }
+    
+    .congestion-index-large {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    
+    .district-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .district-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .overview-card {
+            margin-bottom: 15px;
+        }
+    }
+    
+    .status-ring {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+        font-weight: bold;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        line-height: 1;
+    }
+    
+    .status-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    
+    .district-overview-stats {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .district-stats-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    
+    .district-stats-item {
+        text-align: center;
+        flex: 1;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin: 0 5px;
+    }
+    
+    .district-stats-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+        line-height: 1.2;
+    }
+    
+    .district-stats-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .district-map {
+        width: 100%;
+        height: 330px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-map-marked-alt me-2"></i>区域拥堵分析
+        </h2>
+        <div>
+            <span class="badge bg-light text-dark">
+                <i class="far fa-clock me-1"></i>更新于: {{ current_time }}
+            </span>
+        </div>
+    </div>
+
+    <!-- 城市总览 -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card overview-card">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">全市拥堵状况概览</h4>
+                    <div class="row align-items-center">
+                        <div class="col-md-4 mb-3 mb-md-0">
+                            <div class="d-flex align-items-center">
+                                <div class="congestion-index-large {% if (districts|first).avg_congestion > 0.7 %}text-danger{% elif (districts|first).avg_congestion > 0.4 %}text-warning{% else %}text-success{% endif %}">
+                                    {{ (districts|sum(attribute='avg_congestion') / districts|length)|round(2) }}
+                                </div>
+                                <div>
+                                    <div class="h5 mb-1">平均拥堵指数</div>
+                                    <div class="text-muted small">全市路网综合评估</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row text-center">
+                                <div class="col">
+                                    <div class="status-ring bg-success text-white">
+                                        {{ ((districts|sum(attribute='free_count')) / (districts|sum(attribute='road_count')) * 100)|round|int }}%
+                                    </div>
+                                    <div class="status-label">畅通</div>
+                                </div>
+                                <div class="col">
+                                    <div class="status-ring bg-warning text-white">
+                                        {{ ((districts|sum(attribute='moderate_count')) / (districts|sum(attribute='road_count')) * 100)|round|int }}%
+                                    </div>
+                                    <div class="status-label">中度拥堵</div>
+                                </div>
+                                <div class="col">
+                                    <div class="status-ring bg-danger text-white">
+                                        {{ ((districts|sum(attribute='severe_count')) / (districts|sum(attribute='road_count')) * 100)|round|int }}%
+                                    </div>
+                                    <div class="status-label">严重拥堵</div>
+                                </div>
+                                <div class="col">
+                                    <div class="status-ring bg-primary text-white">
+                                        {{ (districts|sum(attribute='avg_speed') / districts|length)|round|int }}
+                                    </div>
+                                    <div class="status-label">平均车速 (km/h)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mb-3">各区交通状况</h4>
+    
+    <div class="district-grid">
+        {% for district in districts %}
+        <div class="card district-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">{{ district.name }}</h5>
+                <div>
+                    <span class="district-status {% if district.avg_congestion > 0.7 %}severe{% elif district.avg_congestion > 0.4 %}moderate{% else %}free{% endif %}">
+                        {% if district.avg_congestion > 0.7 %}
+                        严重拥堵
+                        {% elif district.avg_congestion > 0.4 %}
+                        中度拥堵
+                        {% else %}
+                        基本畅通
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <div class="small text-muted">拥堵指数</div>
+                        <div class="h2">{{ district.avg_congestion|round(2) }}</div>
+                        <div class="congestion-status-bar">
+                            <div class="congestion-status-value {% if district.avg_congestion > 0.7 %}bg-danger{% elif district.avg_congestion > 0.4 %}bg-warning{% else %}bg-success{% endif %}" style="width: {{ (district.avg_congestion * 100)|round|int }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">平均车速</div>
+                        <div class="h2">{{ district.avg_speed|round(1) }} <small>km/h</small></div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="small text-muted">道路状态分布</div>
+                    </div>
+                    <div>
+                        <span class="status-badge bg-success">畅通 {{ district.status_percent.get('畅通', 0) }}%</span>
+                        <span class="status-badge bg-warning">轻度 {{ district.status_percent.get('轻度拥堵', 0) }}%</span>
+                        <span class="status-badge bg-danger">严重 {{ district.status_percent.get('严重拥堵', 0) }}%</span>
+                    </div>
+                </div>
+                
+                <div class="road-count-detail">
+                    <span class="badge bg-primary rounded-pill">{{ district.road_count }} 条道路</span>
+                    <span class="badge bg-success rounded-pill">{{ district.free_count }} 畅通</span>
+                    <span class="badge bg-warning rounded-pill">{{ district.moderate_count }} 中度拥堵</span>
+                    <span class="badge bg-danger rounded-pill">{{ district.severe_count }} 严重拥堵</span>
+                </div>
+                
+                <div class="text-end mt-3">
+                    <a href="{{ url_for('district_detail', district_name=district.name) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-chart-bar me-1"></i>详细分析
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 进入页面时的动画效果
+        const districtCards = document.querySelectorAll('.district-card');
+        
+        districtCards.forEach((card, index) => {
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 100 * index);
+        });
+        
+        // 定时刷新数据（每60秒）
+        setInterval(function() {
+            location.reload();
+        }, 60000);
+    });
+</script>
+{% endblock %} 

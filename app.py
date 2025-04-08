@@ -6,13 +6,14 @@
 import os
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore  # Add this import
 from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO
 import pandas as pd
+import numpy as np
 
 # 导入自定义模块
 from utils.data_generator import TrafficDataGenerator
@@ -146,7 +147,344 @@ def analysis():
     """数据分析页面"""
     return render_template('analysis.html', active_page='analysis')
 
-# 在预测页面路由处理函数中（约第120行）
+@app.route('/district_analysis')
+def district_analysis():
+    """区域拥堵分析页面"""
+    global current_traffic_data
+    
+    # 如果没有数据，生成一些数据
+    if current_traffic_data.empty:
+        with data_lock:
+            current_traffic_data = data_generator.get_real_time_data()
+    
+    # 获取所有区域的概览数据
+    stats_json = data_processor.prepare_statistics(current_traffic_data)
+    stats = json.loads(stats_json)
+    
+    # 获取每个区域的交通情况
+    district_overviews = []
+    
+    # 确保district_stats存在且有detailed子属性
+    if 'district_stats' in stats and 'detailed' in stats['district_stats']:
+        for district, data in stats['district_stats']['detailed'].items():
+            # 计算状态比例
+            total_roads = data['road_count']
+            status_percent = {}
+            for status, count in data['status_distribution'].items():
+                status_percent[status] = round(count / max(1, total_roads) * 100, 1)
+            
+            district_overviews.append({
+                'name': district,
+                'avg_congestion': data['avg_congestion'],
+                'avg_speed': data['avg_speed'],
+                'road_count': data['road_count'],
+                'severe_count': data['severe_count'],
+                'moderate_count': data['moderate_count'],
+                'free_count': data['free_count'],
+                'status_percent': status_percent
+            })
+    
+    # 按拥堵程度排序
+    district_overviews.sort(key=lambda x: x['avg_congestion'], reverse=True)
+    
+    return render_template(
+        'district_analysis.html',
+        active_page='district_analysis',
+        districts=district_overviews,
+        current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    )
+
+@app.route('/district/<district_name>')
+def district_detail(district_name):
+    """显示特定区域的详细信息页面"""
+    global current_traffic_data
+    
+    # 如果没有数据，生成一些数据
+    if current_traffic_data.empty:
+        with data_lock:
+            current_traffic_data = data_generator.get_real_time_data()
+    
+    # 获取特定区域的详细分析
+    district_analysis_json = data_processor.prepare_district_analysis(current_traffic_data, district_name)
+    district_data = json.loads(district_analysis_json)
+    
+    # 准备地图数据
+    # 筛选此区域的交通数据
+    district_traffic = current_traffic_data[current_traffic_data['district'] == district_name]
+    map_data_json = data_processor.prepare_map_data(district_traffic)
+    
+    # 将地图数据添加到 district_data 字典中（先解析为Python对象）
+    district_data['map_data'] = json.loads(map_data_json)
+    
+    # 添加地图中心点和缩放级别
+    district_data['center_lat'] = district_traffic['latitude'].mean() if not district_traffic.empty else 26.598194
+    district_data['center_lng'] = district_traffic['longitude'].mean() if not district_traffic.empty else 106.707410
+    district_data['zoom_level'] = 13
+    
+    return render_template(
+        'district_detail.html',
+        active_page='district_analysis',
+        district=district_data,
+        current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    )
+
+@app.route('/api/district/<district_name>')
+def api_district_data(district_name):
+    """获取特定区域的交通数据API"""
+    try:
+        # 获取实时交通数据
+        current_data = data_generator.get_real_time_data()
+        
+        # 如果当前数据为空，则生成新数据
+        if current_data.empty:
+            data_generator.generate_data()
+            current_data = data_generator.get_real_time_data()
+        
+        # 根据区域名称筛选数据并生成区域分析数据
+        district_data = data_processor.prepare_district_analysis(current_data, district_name)
+        
+        return district_data
+    except Exception as e:
+        print(f"获取区域数据出错: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/district/<district_name>/prediction')
+def api_district_prediction(district_name):
+    """获取特定区域的拥堵预测数据API"""
+    try:
+        # 获取实时交通数据
+        current_data = data_generator.get_real_time_data()
+        
+        # 如果当前数据为空，则生成新数据
+        if current_data.empty:
+            data_generator.generate_data()
+            current_data = data_generator.get_real_time_data()
+        
+        # 根据区域名称筛选数据
+        district_data = current_data[current_data['district'] == district_name] if district_name != '全市' else current_data
+        
+        if district_data.empty:
+            return jsonify({
+                "error": f"未找到区域 '{district_name}' 的数据",
+                "time_points": [],
+                "predictions": [],
+                "current_status": {
+                    "status": "数据缺失",
+                    "color": "#6c757d",
+                    "description": "暂无该区域数据，请选择其他区域"
+                },
+                "advice": {
+                    "best_time": "暂无数据",
+                    "worst_roads": [],
+                    "alternative_routes": [],
+                    "special_notice": "无法获取该区域数据，建议选择其他区域查看"
+                }
+            }), 404
+        
+        # 获取当前时间，并计算未来3小时的时间点
+        now = datetime.now()
+        time_points = []
+        predictions = []
+        
+        # 计算当前平均拥堵指数作为基准
+        current_avg_congestion = district_data['congestion_index'].mean()
+        time_points.append(now.strftime('%H:%M'))
+        predictions.append(float(current_avg_congestion))
+        
+        # 使用预测模型预测未来几个小时的拥堵情况
+        try:
+            # 准备预测需要的数据
+            prediction_features = []
+            for i in range(1, 5):  # 预测未来4个小时
+                future_time = now + timedelta(hours=i)
+                prediction_features.append({
+                    'hour': future_time.hour,
+                    'day_of_week': future_time.weekday(),
+                    'district': district_name,
+                    'current_congestion': current_avg_congestion
+                })
+            
+            # 通过预测模型获取未来拥堵指数
+            for i, feature in enumerate(prediction_features):
+                future_time = now + timedelta(hours=i+1)
+                
+                # 应用不同的预测逻辑，根据时间段调整权重
+                hour = feature['hour']
+                day_of_week = feature['day_of_week']
+                
+                # 基本预测值
+                base_prediction = current_avg_congestion
+                
+                # 早高峰 (7-9点)
+                if 7 <= hour <= 9 and day_of_week < 5:  # 工作日
+                    if current_avg_congestion < 0.6:  # 当前不太拥堵
+                        prediction = min(0.95, base_prediction + 0.15 + (i * 0.05))
+                    else:  # 当前已拥堵
+                        prediction = min(0.95, base_prediction + 0.05)
+                # 晚高峰 (17-19点)
+                elif 17 <= hour <= 19 and day_of_week < 5:  # 工作日
+                    if current_avg_congestion < 0.6:  # 当前不太拥堵
+                        prediction = min(0.95, base_prediction + 0.2 + (i * 0.05))
+                    else:  # 当前已拥堵
+                        prediction = min(0.95, base_prediction + 0.1)
+                # 中午 (11-14点)
+                elif 11 <= hour <= 14:
+                    if current_avg_congestion > 0.5:  # 当前拥堵
+                        prediction = max(0.2, base_prediction - 0.1 * (i+1))
+                    else:
+                        prediction = base_prediction + 0.05
+                # 夜间 (20-6点)
+                elif hour >= 20 or hour <= 6:
+                    prediction = max(0.1, base_prediction - 0.15 * (i+1))
+                # 其他时段
+                else:
+                    if current_avg_congestion > 0.7:  # 当前严重拥堵
+                        prediction = max(0.3, base_prediction - 0.1 * (i+1))
+                    elif current_avg_congestion < 0.3:  # 当前畅通
+                        prediction = min(0.5, base_prediction + 0.05 * (i+1))
+                    else:
+                        prediction = base_prediction + (0.05 * (i % 2) - 0.025)
+                
+                # 添加少量随机波动
+                prediction = max(0.1, min(0.95, prediction + (np.random.random() * 0.1 - 0.05)))
+                time_points.append(future_time.strftime('%H:%M'))
+                predictions.append(float(prediction))
+        
+        except Exception as e:
+            print(f"预测计算错误: {e}")
+            # 如果预测失败，生成模拟数据
+            for i in range(1, 5):
+                future_time = now + timedelta(hours=i)
+                # 根据当前拥堵程度和时间生成随机预测
+                if now.hour < 9 or now.hour > 18:
+                    prediction = max(0.1, current_avg_congestion - 0.05 * i)
+                else:
+                    prediction = min(0.95, current_avg_congestion + 0.05 * i)
+                time_points.append(future_time.strftime('%H:%M'))
+                predictions.append(float(prediction))
+        
+        # 准备出行建议
+        advice = generate_travel_advice(district_name, current_avg_congestion, predictions, district_data)
+        
+        # 确保所有数据类型正确
+        result = {
+            "district_name": district_name,
+            "time_points": time_points,
+            "predictions": [float(p) for p in predictions],  # 确保所有值都是浮点数
+            "current_status": get_congestion_status(current_avg_congestion),
+            "advice": advice
+        }
+        
+        # 打印返回数据，便于调试
+        print(f"向前端返回的预测数据: {result}")
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        print(f"获取区域预测出错: {e}")
+        # 返回错误时也提供空的数据结构，确保前端不会崩溃
+        return jsonify({
+            "error": str(e),
+            "time_points": [],
+            "predictions": [],
+            "current_status": {
+                "status": "数据错误",
+                "color": "#dc3545",
+                "description": "获取数据时发生错误"
+            },
+            "advice": {
+                "best_time": "暂无数据",
+                "worst_roads": [],
+                "alternative_routes": [],
+                "special_notice": "系统遇到错误，请稍后再试"
+            }
+        }), 500
+
+def get_congestion_status(congestion_value):
+    """根据拥堵指数获取状态描述"""
+    if congestion_value >= 0.7:
+        return {
+            "status": "严重拥堵",
+            "color": "#dc3545",
+            "description": "该区域当前交通状况非常拥堵，建议避开"
+        }
+    elif congestion_value >= 0.4:
+        return {
+            "status": "中度拥堵",
+            "color": "#ffc107",
+            "description": "该区域当前交通状况较为拥堵，谨慎前往"
+        }
+    else:
+        return {
+            "status": "交通畅通",
+            "color": "#28a745",
+            "description": "该区域当前交通状况良好，可以正常出行"
+        }
+
+def generate_travel_advice(district_name, current_congestion, predictions, district_data):
+    """根据预测结果生成出行建议"""
+    now = datetime.now()
+    hour = now.hour
+    
+    # 确定最佳出行时间
+    if hour < 7 or hour > 19:
+        best_time = "今日 10:00 - 16:00"
+    elif hour >= 7 and hour < 10:
+        best_time = "今日 14:00 - 16:00"
+    elif hour >= 16 and hour < 19:
+        best_time = "今日 20:00 后或明日 10:00 - 16:00"
+    else:
+        best_time = "当前时段或今日 10:00 - 16:00"
+    
+    # 获取最拥堵的道路
+    worst_roads = []
+    if not district_data.empty:
+        top_congested = district_data.sort_values('congestion_index', ascending=False).head(3)
+        for _, road in top_congested.iterrows():
+            worst_roads.append({
+                "road_name": road['road_name'],
+                "congestion_index": float(road['congestion_index']),
+                "status": road['status']
+            })
+    
+    # 生成替代路线建议
+    alternative_routes = []
+    if district_name == "云岩区":
+        alternative_routes.append({"from": "林城西路", "to": "省府路"})
+        alternative_routes.append({"from": "中华北路", "to": "太平路"})
+    elif district_name == "南明区":
+        alternative_routes.append({"from": "解放路", "to": "太慈路"})
+        alternative_routes.append({"from": "沙冲路", "to": "市南路"})
+    elif district_name == "观山湖区":
+        alternative_routes.append({"from": "金朱路", "to": "长岭北路"})
+        alternative_routes.append({"from": "观山东路", "to": "石林东路"})
+    else:
+        alternative_routes.append({"from": "环城高速", "to": "市区道路"})
+    
+    # 生成特别提醒
+    special_notice = ""
+    if hour < 7:
+        special_notice = f"今日7:00-9:00为早高峰，该区域拥堵指数预计将达到{predictions[1]:.2f}，建议错峰出行。"
+    elif hour >= 7 and hour < 10:
+        special_notice = "当前处于早高峰时段，拥堵指数较高，建议选择公共交通工具出行。"
+    elif hour >= 10 and hour < 16:
+        special_notice = f"今日17:00-19:00为晚高峰，该区域拥堵指数预计将升高至{predictions[2]:.2f}，建议提前安排行程。"
+    elif hour >= 16 and hour < 20:
+        special_notice = "当前处于晚高峰时段，拥堵指数较高，建议选择公共交通工具出行。"
+    else:
+        special_notice = f"明日7:00-9:00为早高峰，该区域拥堵指数预计将达到0.80，建议早做准备。"
+    
+    # 根据天气添加相关建议（实际应用中应从API获取天气数据）
+    if np.random.random() > 0.5:
+        special_notice += " 此外，近期预计有雨，降雨天气可能会加剧道路拥堵情况，请提前规划行程。"
+    
+    return {
+        "best_time": best_time,
+        "worst_roads": worst_roads,
+        "alternative_routes": alternative_routes,
+        "special_notice": special_notice
+    }
+
 @app.route('/prediction')
 def prediction():
     """拥堵预测页面"""
@@ -195,28 +533,28 @@ def update_traffic_data():
                         ignore_index=True
                     )
                     current_traffic_data = df
-                    last_update_time = datetime.now()
-                    
+        last_update_time = datetime.now()
+        
                     # 准备前端所需的各种数据
                     try:
-                        update_data = {
-                            'timestamp': last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
+        update_data = {
+            'timestamp': last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
                             'map_data': json.loads(data_processor.prepare_map_data(current_traffic_data)),
                             'congestion_list': json.loads(data_processor.prepare_congestion_list(current_traffic_data)),
                             'alerts': json.loads(data_processor.prepare_alert_data(current_traffic_data)),
                             'stats': json.loads(data_processor.prepare_statistics(current_traffic_data))
-                        }
-                        
-                        socketio.emit('traffic_update', update_data)
-                        print(f"数据已更新: {last_update_time}")
+        }
+        
+        socketio.emit('traffic_update', update_data)
+        print(f"数据已更新: {last_update_time}")
                     except Exception as e:
                         print(f"数据处理或发送错误: {e}")
-                        
-        except Exception as e:
-            print(f"数据更新主循环错误: {e}")
         
+    except Exception as e:
+            print(f"数据更新主循环错误: {e}")
+    
         # 使用time.sleep而不是socketio.sleep，因为这个函数在单独的线程中运行
-        time.sleep(config.SIMULATION_INTERVAL)
+    time.sleep(config.SIMULATION_INTERVAL)
 
 @app.route('/about')
 def about():

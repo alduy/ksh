@@ -1,0 +1,1038 @@
+{% extends "base.html" %}
+
+{% block title %}{{ district.district_name }} 交通分析 - 贵阳市交通拥堵监测系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .district-detail-container {
+        padding: 1rem;
+    }
+    
+    .district-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .district-title {
+        font-size: 1.8rem;
+        margin-bottom: 0;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    
+    .detail-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1.5rem;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+    .detail-card:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+    
+    .detail-card .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 0.8rem 1.2rem;
+        font-weight: 600;
+    }
+    
+    .detail-card .card-body {
+        padding: 1.2rem;
+    }
+    
+    .progress {
+        height: 8px;
+        border-radius: 4px;
+        background-color: #f0f0f0;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .stat-card {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        line-height: 1;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .hour-pattern-chart {
+        height: 300px;
+        width: 100%;
+    }
+    
+    .congested-road-item {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 0.8rem 0;
+        transition: all 0.2s ease;
+    }
+    
+    .congested-road-item:last-child {
+        border-bottom: none;
+    }
+    
+    .congested-road-item:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .congestion-bar {
+        height: 6px;
+        width: 100%;
+        background-color: #f0f0f0;
+        border-radius: 3px;
+        margin-top: 0.5rem;
+    }
+    
+    .congestion-value {
+        height: 100%;
+        border-radius: 3px;
+    }
+    
+    .district-map {
+        height: 400px;
+        width: 100%;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .status-distribution {
+        display: flex;
+        margin-top: 1rem;
+    }
+    
+    .status-bar {
+        flex-grow: 1;
+        height: 20px;
+        position: relative;
+        color: white;
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        line-height: 20px;
+    }
+    
+    .status-legend {
+        display: flex;
+        margin-top: 0.5rem;
+        justify-content: center;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        margin-right: 0.4rem;
+    }
+    
+    @media (max-width: 992px) {
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<div class="district-detail-container">
+    <!-- 区域标题 -->
+    <div class="district-header">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('district_analysis') }}">区域分析</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ district.district_name }}</li>
+                </ol>
+            </nav>
+            <h2 class="district-title">
+                <i class="fas fa-map-marker-alt me-2"></i>{{ district.district_name }} 交通状况
+            </h2>
+        </div>
+        <div class="d-flex align-items-center">
+            <span class="status-badge me-3 {% if district.avg_congestion > 0.7 %}bg-danger text-white{% elif district.avg_congestion > 0.4 %}bg-warning{% else %}bg-success text-white{% endif %}">
+                {% if district.avg_congestion > 0.7 %}
+                    严重拥堵
+                {% elif district.avg_congestion > 0.4 %}
+                    中度拥堵
+                {% else %}
+                    畅通
+                {% endif %}
+            </span>
+            <span class="badge bg-light text-dark">
+                <i class="far fa-clock me-1"></i>更新于: {{ current_time }}
+            </span>
+        </div>
+    </div>
+    
+    <!-- 数据概览 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card detail-card h-100">
+                <div class="card-header">
+                    <i class="fas fa-info-circle me-2"></i>区域交通状况概览
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="small text-muted mb-1">拥堵指数</div>
+                            <div class="h1 {% if district.avg_congestion > 0.7 %}text-danger{% elif district.avg_congestion > 0.4 %}text-warning{% else %}text-success{% endif %}">
+                                {{ district.avg_congestion|round(2) }}
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar {% if district.avg_congestion > 0.7 %}bg-danger{% elif district.avg_congestion > 0.4 %}bg-warning{% else %}bg-success{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ (district.avg_congestion * 100)|round|int }}%" 
+                                     aria-valuenow="{{ (district.avg_congestion * 100)|round|int }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="small text-muted mt-2">该区域整体交通拥堵情况评估</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted mb-1">平均车速</div>
+                            <div class="h1">{{ district.avg_speed|round(1) }} <small>km/h</small></div>
+                            <div class="progress">
+                                <div class="progress-bar bg-info" 
+                                     role="progressbar" 
+                                     style="width: {{ (district.avg_speed / 60 * 100)|round|int }}%" 
+                                     aria-valuenow="{{ (district.avg_speed / 60 * 100)|round|int }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <div class="small text-muted mt-2">该区域车辆平均运行速度</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="small text-muted mb-1">道路拥堵分布</div>
+                            <div class="status-distribution">
+                                {% for status, count in district.status_distribution.items() %}
+                                    {% set percent = (count / district.road_count * 100)|round|int %}
+                                    {% if status == '畅通' %}
+                                        <div class="status-bar bg-success" style="width: {{ percent }}%">
+                                            {% if percent > 10 %}{{ percent }}%{% endif %}
+                                        </div>
+                                    {% elif status == '轻度拥堵' %}
+                                        <div class="status-bar bg-info" style="width: {{ percent }}%">
+                                            {% if percent > 10 %}{{ percent }}%{% endif %}
+                                        </div>
+                                    {% elif status == '中度拥堵' %}
+                                        <div class="status-bar bg-warning" style="width: {{ percent }}%">
+                                            {% if percent > 10 %}{{ percent }}%{% endif %}
+                                        </div>
+                                    {% elif status == '严重拥堵' %}
+                                        <div class="status-bar bg-danger" style="width: {{ percent }}%">
+                                            {% if percent > 10 %}{{ percent }}%{% endif %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="status-legend">
+                                <div class="legend-item">
+                                    <div class="legend-color bg-success"></div>
+                                    <span>畅通</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-info"></div>
+                                    <span>轻度拥堵</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-warning"></div>
+                                    <span>中度拥堵</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-danger"></div>
+                                    <span>严重拥堵</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card detail-card h-100">
+                <div class="card-header">
+                    <i class="fas fa-chart-line me-2"></i>交通状况统计
+                </div>
+                <div class="card-body">
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">{{ district.road_count }}</div>
+                            <div class="stat-label">监控道路总数</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ district.congested_count }}</div>
+                            <div class="stat-label">拥堵路段数量</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ (district.congestion_percent * 100)|round|int }}%</div>
+                            <div class="stat-label">道路拥堵率</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">{{ district.avg_speed|round(1) }}</div>
+                            <div class="stat-label">平均车速 (km/h)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-3">
+        <div class="col-md-8">
+            <div class="card card-dashboard">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marked-alt me-2"></i>
+                        <span id="map-title">{{ district.district_name }} 实时拥堵预测地图</span>
+                    </h5>
+                    <button id="refresh-map" class="btn btn-sm btn-primary">
+                        <i class="fas fa-sync-alt"></i> 刷新地图
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="district-map-container" style="height: 450px; width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-dashboard">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        <span>未来交通预测</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="status-indicator-container mb-3">
+                        <div id="status-indicator" class="status-indicator" style="background-color: {{ district.status_color }};"></div>
+                        <div class="status-text">
+                            <strong id="status-text">{{ district.status }}</strong>
+                            <div id="status-description" class="text-muted small">
+                                {{ district.status_description }}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="height: 200px;">
+                        <canvas id="predictionChart"></canvas>
+                    </div>
+                    <div class="prediction-advice mt-3">
+                        <h6 class="prediction-advice-title">
+                            <i class="fas fa-lightbulb text-warning"></i> 出行建议
+                        </h6>
+                        <ul class="list-group prediction-list">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-clock text-primary"></i> 今日最佳出行时段</span>
+                                <span id="best-time" class="badge bg-primary">加载中...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-ban text-danger"></i> 建议避开路段</span>
+                                <span id="avoid-road-1" class="badge bg-danger">加载中...</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-route text-success"></i> 推荐替代路线</span>
+                                <span id="alt-road-1" class="badge bg-success">加载中...</span>
+                            </li>
+                        </ul>
+                        <div id="special-notice" class="alert alert-warning mt-2" role="alert">
+                            加载预测数据中...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 拥堵路段列表 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card detail-card">
+                <div class="card-header">
+                    <i class="fas fa-road me-2"></i>拥堵路段 TOP {{ district.top_congested_roads|length }}
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    {% if district.top_congested_roads %}
+                        {% for road in district.top_congested_roads %}
+                            <div class="congested-road-item" data-lat="{{ road.latitude }}" data-lng="{{ road.longitude }}" data-id="{{ road.id }}">
+                                <div class="d-flex justify-content-between">
+                                    <div class="fw-bold">{{ road.road_name }}</div>
+                                    <div class="small fw-bold {% if road.congestion_index > 0.7 %}text-danger{% elif road.congestion_index > 0.4 %}text-warning{% else %}text-success{% endif %}">
+                                        {{ road.congestion_index|round(2) }}
+                                    </div>
+                                </div>
+                                <div class="small text-muted">{{ road.status }} | {{ road.average_speed }} km/h</div>
+                                <div class="congestion-bar">
+                                    <div class="congestion-value {% if road.congestion_index > 0.7 %}bg-danger{% elif road.congestion_index > 0.4 %}bg-warning{% else %}bg-success{% endif %}" 
+                                         style="width: {{ (road.congestion_index * 100)|round|int }}%"></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info">该区域暂无拥堵路段数据</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 时段拥堵模式 -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card detail-card">
+                <div class="card-header">
+                    <i class="fas fa-clock me-2"></i>{{ district.district_name }} 全天拥堵模式
+                </div>
+                <div class="card-body">
+                    <canvas id="hourPatternChart" class="hour-pattern-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
+<script>
+    // 添加调试日志
+    console.log('脚本开始执行');
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM已加载');
+        
+        try {
+            // 初始化地图
+            console.log('开始初始化地图...');
+            initDistrictMap();
+            console.log('地图初始化完成');
+            
+            // 初始化小时模式图表
+            console.log('开始初始化小时模式图表...');
+            initHourPatternChart();
+            console.log('小时模式图表初始化完成');
+            
+            // 初始化预测图表
+            console.log('开始初始化预测图表...');
+            initPredictionChart();
+            console.log('预测图表初始化完成');
+            
+            // 点击拥堵路段定位地图
+            document.querySelectorAll('.congested-road-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const lat = parseFloat(this.dataset.lat);
+                    const lng = parseFloat(this.dataset.lng);
+                    const id = this.dataset.id;
+                    
+                    // 高亮选中的路段
+                    document.querySelectorAll('.congested-road-item').forEach(el => {
+                        el.style.backgroundColor = '';
+                    });
+                    this.style.backgroundColor = 'rgba(0, 123, 255, 0.1)';
+                    
+                    // 移动地图到该位置
+                    if (window.districtMap && !isNaN(lat) && !isNaN(lng)) {
+                        window.districtMap.flyTo([lat, lng], 15, {
+                            animate: true,
+                            duration: 1.5
+                        });
+                        
+                        // 查找对应的标记并打开信息窗口
+                        if (window.mapMarkers) {
+                            window.mapMarkers.forEach(marker => {
+                                if (marker.roadId == id) {
+                                    marker.openPopup();
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+            
+            // 刷新地图按钮
+            document.getElementById('refresh-map').addEventListener('click', function() {
+                console.log('刷新地图按钮点击');
+                initDistrictMap();
+            });
+            
+            // 刷新预测按钮
+            document.getElementById('refresh-prediction').addEventListener('click', function() {
+                console.log('刷新预测按钮点击');
+                fetchDistrictPrediction().catch(error => {
+                    console.error('预测刷新失败:', error);
+                });
+            });
+        } catch (error) {
+            console.error('初始化过程出错:', error);
+        }
+    });
+    
+    // 初始化地图
+    function initDistrictMap() {
+        try {
+            console.log('初始化区域地图');
+            // 检查地图容器
+            const mapContainer = document.getElementById('district-map-container');
+            if (!mapContainer) {
+                console.error('找不到地图容器元素: district-map-container');
+                return;
+            }
+            
+            console.log('找到地图容器，尺寸:', mapContainer.offsetWidth, 'x', mapContainer.offsetHeight);
+            
+            // 创建自定义图标
+            window.greenIcon = L.icon({
+                iconUrl: '/static/images/marker-icon-2x-green.png',
+                shadowUrl: '/static/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            
+            window.orangeIcon = L.icon({
+                iconUrl: '/static/images/marker-icon-2x-orange.png',
+                shadowUrl: '/static/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            
+            window.redIcon = L.icon({
+                iconUrl: '/static/images/marker-icon-2x-red.png',
+                shadowUrl: '/static/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            
+            // 获取地图数据
+            const mapData = {{ district.map_data|tojson }};
+            console.log('地图数据:', mapData);
+            
+            // 在删除旧地图实例之前检查是否存在
+            if (window.districtMap) {
+                console.log('移除现有地图实例');
+                window.districtMap.remove();
+                window.districtMap = null;
+            }
+            
+            // 清空容器以确保没有残留元素
+            mapContainer.innerHTML = '';
+            
+            // 创建地图
+            window.districtMap = L.map('district-map-container', {
+                center: [{{ district.center_lat }}, {{ district.center_lng }}],
+                zoom: {{ district.zoom_level }},
+                zoomControl: true,
+                attributionControl: true
+            });
+            
+            // 添加底图 - 使用可靠的服务
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(window.districtMap);
+            
+            // 添加标记
+            window.mapMarkers = [];
+            
+            if (mapData && mapData.features && mapData.features.length > 0) {
+                console.log('添加', mapData.features.length, '个标记点');
+                mapData.features.forEach(feature => {
+                    // 选择图标
+                    let icon;
+                    const congestion = feature.properties.congestion_index;
+                    
+                    if (congestion >= 0.7) {
+                        icon = redIcon;
+                    } else if (congestion >= 0.4) {
+                        icon = orangeIcon;
+                    } else {
+                        icon = greenIcon;
+                    }
+                    
+                    // 创建标记
+                    try {
+                        const marker = L.marker([
+                            feature.geometry.coordinates[1],
+                            feature.geometry.coordinates[0]
+                        ], {
+                            icon: icon
+                        }).addTo(window.districtMap);
+                        
+                        // 添加弹窗信息
+                        if (feature.properties.popupContent) {
+                            marker.bindPopup(feature.properties.popupContent);
+                        }
+                        
+                        // 存储标记id
+                        marker.roadId = feature.properties.id;
+                        
+                        // 保存到标记数组
+                        window.mapMarkers.push(marker);
+                    } catch (err) {
+                        console.error('创建标记失败:', err, feature);
+                    }
+                });
+            } else {
+                console.warn('没有有效的地图数据或地图特征');
+            }
+        } catch (error) {
+            console.error('地图初始化错误:', error);
+        }
+    }
+    
+    function initHourPatternChart() {
+        try {
+            const hourlyData = {{ district.hourly_pattern|tojson }};
+            console.log('小时模式数据:', hourlyData);
+            
+            if (!hourlyData || hourlyData.length === 0) {
+                console.warn('小时模式数据为空');
+                return;
+            }
+            
+            const canvasElement = document.getElementById('hourPatternChart');
+            if (!canvasElement) {
+                console.error('找不到小时模式图表的Canvas元素');
+                return;
+            }
+            
+            const ctx = canvasElement.getContext('2d');
+            if (!ctx) {
+                console.error('无法获取Canvas的2D上下文');
+                return;
+            }
+            
+            const labels = hourlyData.map(item => item.hour);
+            const congestionData = hourlyData.map(item => item.congestion);
+            const currentHourIndexes = hourlyData.map((item, index) => item.is_current ? index : -1).filter(i => i !== -1);
+            
+            const hourPatternChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '拥堵指数',
+                        data: congestionData,
+                        backgroundColor: 'rgba(55, 114, 255, 0.2)',
+                        borderColor: 'rgba(55, 114, 255, 1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: ctx => {
+                            // 当前小时点用红色高亮显示
+                            const index = ctx.dataIndex;
+                            return currentHourIndexes.includes(index) ? 'rgba(220, 53, 69, 1)' : 'rgba(55, 114, 255, 1)';
+                        },
+                        pointBorderColor: ctx => {
+                            const index = ctx.dataIndex;
+                            return currentHourIndexes.includes(index) ? 'rgba(220, 53, 69, 1)' : 'rgba(55, 114, 255, 1)';
+                        },
+                        pointRadius: ctx => {
+                            const index = ctx.dataIndex;
+                            return currentHourIndexes.includes(index) ? 6 : 3;
+                        },
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: '拥堵指数'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间 (小时)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const hour = context.label;
+                                    const value = context.parsed.y.toFixed(2);
+                                    
+                                    let status = '畅通';
+                                    if (value >= 0.7) {
+                                        status = '严重拥堵';
+                                    } else if (value >= 0.4) {
+                                        status = '中度拥堵';
+                                    }
+                                    
+                                    return `${hour} - 拥堵指数: ${value} (${status})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('小时模式图表初始化错误:', error);
+        }
+    }
+    
+    // 获取区域拥堵预测数据
+    function fetchDistrictPrediction() {
+        console.log('获取区域拥堵预测数据');
+        // 显示加载状态
+        document.getElementById('status-indicator').style.backgroundColor = '#6c757d';
+        document.getElementById('status-text').textContent = '数据加载中...';
+        document.getElementById('status-description').textContent = '正在从服务器获取拥堵预测数据';
+        
+        // 返回Promise以支持链式调用
+        return new Promise((resolve, reject) => {
+            // 从API获取预测数据
+            fetch(`/api/district/{{ district.district_name }}/prediction`)
+                .then(response => {
+                    console.log('API响应状态:', response.status);
+                    if (!response.ok) {
+                        throw new Error('网络响应错误：' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('获取到预测数据:', data);
+                    
+                    // 更新预测图表
+                    updatePredictionChart(data);
+                    
+                    // 更新出行建议
+                    updatePredictionAdvice(data);
+                    
+                    resolve(data);
+                })
+                .catch(error => {
+                    console.error('获取预测数据失败:', error);
+                    document.getElementById('status-indicator').style.backgroundColor = '#dc3545';
+                    document.getElementById('status-text').textContent = '数据获取失败';
+                    document.getElementById('status-description').textContent = '无法获取预测数据，请稍后再试';
+                    
+                    // 使用模拟数据作为备选
+                    console.log('使用模拟数据作为备选');
+                    const mockData = createMockPredictionData();
+                    updatePredictionChart(mockData);
+                    updatePredictionAdvice(mockData);
+                    
+                    reject(error);
+                });
+        });
+    }
+    
+    // 创建模拟预测数据
+    function createMockPredictionData() {
+        console.log('创建模拟预测数据');
+        const now = new Date();
+        const timePoints = [];
+        const predictions = [];
+        
+        // 获取当前拥堵指数
+        const currentCongestion = {{ district.avg_congestion }};
+        predictions.push(currentCongestion);
+        
+        // 创建时间点
+        for (let i = 0; i < 5; i++) {
+            const futureTime = new Date(now.getTime() + i * 60 * 60 * 1000);
+            const hour = futureTime.getHours().toString().padStart(2, '0');
+            const min = futureTime.getMinutes().toString().padStart(2, '0');
+            timePoints.push(`${hour}:${min}`);
+            
+            if (i > 0) {
+                // 添加预测值
+                predictions.push(Math.min(0.95, currentCongestion + (i * 0.05) * (Math.random() > 0.5 ? 1 : -1)));
+            }
+        }
+        
+        return {
+            time_points: timePoints,
+            predictions: predictions,
+            current_status: {
+                status: currentCongestion >= 0.7 ? '严重拥堵' : 
+                       currentCongestion >= 0.4 ? '中度拥堵' : '交通畅通',
+                color: currentCongestion >= 0.7 ? '#dc3545' : 
+                      currentCongestion >= 0.4 ? '#ffc107' : '#28a745',
+                description: currentCongestion >= 0.7 ? '该区域当前交通状况非常拥堵，建议避开' : 
+                            currentCongestion >= 0.4 ? '该区域当前交通状况较为拥堵，谨慎前往' : 
+                            '该区域当前交通状况良好，可以正常出行'
+            },
+            advice: {
+                best_time: '今日 14:00 - 16:00',
+                worst_roads: [
+                    {road_name: '{{ district.top_congested_roads[0].road_name if district.top_congested_roads else "金阳大道" }}'}
+                ],
+                alternative_routes: [
+                    {from: '林城西路', to: '观山大道'}
+                ],
+                special_notice: '根据预测，今日17:00-19:00将出现拥堵高峰，建议错峰出行。'
+            }
+        };
+    }
+    
+    // 更新预测图表
+    function updatePredictionChart(data) {
+        try {
+            console.log('更新预测图表');
+            if (!window.predictionChart) {
+                console.error('预测图表未初始化');
+                initPredictionChart(); // 尝试初始化
+                if (!window.predictionChart) {
+                    return; // 如果仍然失败，则退出
+                }
+            }
+            
+            // 从API响应中获取数据
+            const timePoints = data.time_points;
+            const predictions = data.predictions;
+            
+            if (!timePoints || !predictions) {
+                console.error('预测数据格式错误', data);
+                return;
+            }
+            
+            console.log('预测时间点:', timePoints);
+            console.log('预测值:', predictions);
+            
+            // 更新图表数据 - 使用深拷贝避免引用问题
+            window.predictionChart.data.labels = [...timePoints];
+            window.predictionChart.data.datasets[0].data = [predictions[0], null, null, null, null];
+            window.predictionChart.data.datasets[1].data = [...predictions];
+            
+            // 使用timeout来确保DOM更新后再更新图表
+            setTimeout(() => {
+                window.predictionChart.update();
+            }, 100);
+        } catch (error) {
+            console.error('更新预测图表错误:', error);
+        }
+    }
+    
+    // 更新预测状态和出行建议
+    function updatePredictionAdvice(data) {
+        try {
+            console.log('更新出行建议');
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const statusDescription = document.getElementById('status-description');
+            const bestTime = document.getElementById('best-time');
+            const avoidRoad1 = document.getElementById('avoid-road-1');
+            const altRoad1 = document.getElementById('alt-road-1');
+            const specialNotice = document.getElementById('special-notice');
+            
+            if (!statusIndicator || !statusText || !statusDescription || !bestTime || !avoidRoad1 || !altRoad1 || !specialNotice) {
+                console.error('找不到出行建议相关元素');
+                return;
+            }
+            
+            // 获取API返回的状态
+            const status = data.current_status;
+            if (!status) {
+                console.error('状态数据缺失', data);
+                return;
+            }
+            
+            // 设置状态颜色和文本
+            statusIndicator.style.backgroundColor = status.color; 
+            statusText.textContent = status.status;
+            statusDescription.textContent = status.description;
+            
+            // 获取API返回的建议
+            const advice = data.advice;
+            if (!advice) {
+                console.error('建议数据缺失', data);
+                return;
+            }
+            
+            // 设置最佳出行时间
+            bestTime.textContent = advice.best_time;
+            
+            // 设置避开路段和替代路线
+            if (advice.worst_roads && advice.worst_roads.length > 0) {
+                avoidRoad1.textContent = advice.worst_roads[0].road_name;
+            }
+            
+            // 设置替代路线
+            if (advice.alternative_routes && advice.alternative_routes.length > 0) {
+                const route = advice.alternative_routes[0];
+                altRoad1.textContent = `${route.from} → ${route.to}`;
+            }
+            
+            // 设置特别提醒
+            specialNotice.textContent = advice.special_notice;
+        } catch (error) {
+            console.error('更新出行建议错误:', error);
+        }
+    }
+    
+    // 初始化预测图表
+    function initPredictionChart() {
+        try {
+            console.log('初始化预测图表');
+            const canvasElement = document.getElementById('predictionChart');
+            if (!canvasElement) {
+                console.error('找不到预测图表的Canvas元素');
+                return;
+            }
+            
+            // 确保图表容器已经正确渲染
+            const parentContainer = canvasElement.parentElement;
+            if (parentContainer && (parentContainer.offsetWidth <= 0 || parentContainer.offsetHeight <= 0)) {
+                console.warn('图表容器尺寸不正确:', parentContainer.offsetWidth, 'x', parentContainer.offsetHeight);
+                console.log('等待DOM渲染完成后再初始化图表...');
+                setTimeout(initPredictionChart, 500);
+                return;
+            }
+            
+            const ctx = canvasElement.getContext('2d');
+            if (!ctx) {
+                console.error('无法获取Canvas的2D上下文');
+                return;
+            }
+            
+            // 如果已经存在图表实例，先销毁
+            if (window.predictionChart) {
+                window.predictionChart.destroy();
+            }
+            
+            // 创建初始空图表
+            window.predictionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['加载中...'],
+                    datasets: [{
+                        label: '实时拥堵指数',
+                        data: [null],
+                        borderColor: 'rgba(55, 114, 255, 1)',
+                        borderWidth: 3,
+                        pointBackgroundColor: 'rgba(55, 114, 255, 1)',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        tension: 0.4
+                    }, {
+                        label: '预测拥堵趋势',
+                        data: [null],
+                        borderColor: 'rgba(255, 99, 132, 0.8)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointBackgroundColor: 'rgba(255, 99, 132, 0.8)',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            title: {
+                                display: true,
+                                text: '拥堵指数'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '预测时间点'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.parsed.y;
+                                    if (value === null) return label + ': 暂无数据';
+                                    
+                                    let status = '畅通';
+                                    if (value >= 0.7) {
+                                        status = '严重拥堵';
+                                    } else if (value >= 0.4) {
+                                        status = '中度拥堵';
+                                    }
+                                    
+                                    return `${label}: ${value.toFixed(2)} (${status})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 立即获取预测数据
+            console.log('开始获取初始预测数据');
+            fetchDistrictPrediction().catch(error => {
+                console.error('初始预测数据获取失败:', error);
+            });
+        } catch (error) {
+            console.error('预测图表初始化错误:', error);
+        }
+    }
+</script>
+{% endblock %} 

@@ -446,91 +446,91 @@
 {% block content %}
 <div class="dashboard-container">
     <h2 class="mb-2">
-        <i class="fas fa-tachometer-alt me-2"></i>贵阳市交通实时监控
+    <i class="fas fa-tachometer-alt me-2"></i>贵阳市交通实时监控
         <small class="text-muted fs-6 ms-2">数据更新时间: <span id="update-time" class="badge bg-light text-dark">{{ current_time }}</span></small>
-    </h2>
+</h2>
 
     <div class="row stats-row">
-        <!-- 交通状态统计卡片 -->
-        <div class="col-md-3">
+    <!-- 交通状态统计卡片 -->
+    <div class="col-md-3">
             <div class="card stat-card congestion">
                 <div class="card-body py-2">
-                    <div class="d-flex justify-content-between">
-                        <div>
+                <div class="d-flex justify-content-between">
+                    <div>
                             <h6 class="card-title text-muted mb-0 small">平均拥堵指数</h6>
                             <h3 id="avg-congestion" class="mt-2 mb-0 display-6">{{ avg_congestion }}</h3>
-                        </div>
-                        <div class="bg-light p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="fas fa-traffic-light fa-2x text-danger"></i>
-                        </div>
                     </div>
+                        <div class="bg-light p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="fas fa-traffic-light fa-2x text-danger"></i>
+                    </div>
+                </div>
                     <div class="progress mt-2">
                         <div id="congestion-progress" class="progress-bar bg-danger" role="progressbar" style="width: 0; transition: width 1.5s ease-in-out;"></div>
-                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-3">
+    </div>
+    
+    <div class="col-md-3">
             <div class="card stat-card speed">
                 <div class="card-body py-2">
-                    <div class="d-flex justify-content-between">
-                        <div>
+                <div class="d-flex justify-content-between">
+                    <div>
                             <h6 class="card-title text-muted mb-0 small">平均车速</h6>
                             <h3 id="avg-speed" class="mt-2 mb-0 display-6">{{ avg_speed }} <small class="fs-6">km/h</small></h3>
-                        </div>
+                    </div>
                         <div class="bg-light p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
                             <i class="fas fa-tachometer-alt fa-2x text-primary"></i>
-                        </div>
                     </div>
+                </div>
                     <div class="progress mt-2">
                         <div id="speed-progress" class="progress-bar bg-info" role="progressbar" style="width: 0; transition: width 1.5s ease-in-out;"></div>
-                    </div>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-3">
+    </div>
+    
+    <div class="col-md-3">
             <div class="card stat-card flow">
                 <div class="card-body py-2">
-                    <div class="d-flex justify-content-between">
-                        <div>
+                <div class="d-flex justify-content-between">
+                    <div>
                             <h6 class="card-title text-muted mb-0 small">监控路段</h6>
                             <h3 id="road-count" class="mt-2 mb-0 display-6">{{ road_count }}</h3>
-                        </div>
-                        <div class="bg-light p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="fas fa-road fa-2x text-warning"></i>
-                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-3">
-            <div class="card stat-card">
-                <div class="card-body py-2">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title text-muted mb-0 small">严重拥堵路段</h6>
-                            <h3 id="heavy-congestion-count" class="mt-2 mb-0 display-6">{{ heavy_congestion_count }}</h3>
-                        </div>
                         <div class="bg-light p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                            <i class="fas fa-exclamation-triangle fa-2x text-success"></i>
-                        </div>
+                        <i class="fas fa-road fa-2x text-warning"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    
+    <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body py-2">
+                <div class="d-flex justify-content-between">
+                    <div>
+                            <h6 class="card-title text-muted mb-0 small">严重拥堵路段</h6>
+                            <h3 id="heavy-congestion-count" class="mt-2 mb-0 display-6">{{ heavy_congestion_count }}</h3>
+                    </div>
+                        <div class="bg-light p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="fas fa-exclamation-triangle fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <div class="row">
-        <!-- 地图区域 -->
+<div class="row">
+    <!-- 地图区域 -->
         <div class="col-lg-8 px-1">
             <div class="card card-dashboard h-100 mb-0">
                 <div class="card-header d-flex justify-content-between align-items-center py-2">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-map-marked-alt me-2 text-primary"></i>交通拥堵实时地图
-                    </h5>
+                </h5>
                     <div class="btn-group btn-group-sm" role="group">
                         <button type="button" class="btn btn-outline-primary py-1 px-2" id="refresh-map">
                             <i class="fas fa-sync-alt me-1"></i>刷新
@@ -538,7 +538,7 @@
                         <button type="button" class="btn btn-outline-secondary py-1 px-2" id="reset-view">
                             <i class="fas fa-expand me-1"></i>重置视图
                         </button>
-                    </div>
+            </div>
                 </div>
                 <div class="card-body p-0">
                     <div id="map" class="border-0"></div>
@@ -547,100 +547,100 @@
                             <span class="visually-hidden">加载中...</span>
                         </div>
                     </div>
-                </div>
             </div>
         </div>
-        
-        <!-- 拥堵列表和警报区域 -->
+    </div>
+    
+    <!-- 拥堵列表和警报区域 -->
         <div class="col-lg-4 px-1 d-flex flex-column">
-            <!-- 拥堵路段列表 -->
+        <!-- 拥堵路段列表 -->
             <div class="card card-dashboard flex-grow-1">
                 <div class="card-header d-flex justify-content-between align-items-center py-2">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-list-alt me-2 text-primary"></i>拥堵路段实时列表
-                    </h5>
+                </h5>
                     <span class="badge bg-danger rounded-pill">TOP 10</span>
-                </div>
-                <div class="card-body p-0">
+            </div>
+            <div class="card-body p-0">
                     <div class="congestion-table">
-                        <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0">
                             <thead class="table-light sticky-top" style="position: sticky; top: 0; z-index: 100;">
                                 <tr>
                                     <th class="ps-2">路段名称</th>
                                     <th style="width: 22%">拥堵指数</th>
                                     <th class="pe-2" style="width: 30%">状态</th>
-                                </tr>
-                            </thead>
-                            <tbody id="congestion-list">
-                                {% for road in congested_roads %}
+                        </tr>
+                    </thead>
+                    <tbody id="congestion-list">
+                        {% for road in congested_roads %}
                                 <tr class="road-row" data-road-name="{{ road.road_name }}">
                                     <td class="ps-2 text-truncate" style="max-width: 160px;" title="{{ road.road_name }}">{{ road.road_name }}</td>
                                     <td><strong>{{ road.congestion_index }}</strong></td>
                                     <td class="pe-2">
                                         <span class="status-badge {% if road.status == '畅通' %}status-normal{% elif road.status == '轻度拥堵' %}status-light{% elif road.status == '中度拥堵' %}status-moderate{% else %}status-heavy{% endif %}">
-                                            {{ road.status }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                    {{ road.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
                     </div>
-                </div>
             </div>
-            
-            <!-- 实时警报 -->
+        </div>
+        
+        <!-- 实时警报 -->
             <div class="card card-dashboard flex-grow-1">
                 <div class="card-header d-flex justify-content-between align-items-center py-2">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-bell me-2 text-primary"></i>实时交通警报
-                    </h5>
+                </h5>
                     <span class="badge bg-primary rounded-pill" id="alert-count">{{ alerts|length }}</span>
-                </div>
+            </div>
                 <div class="card-body p-2 alert-panel" id="alert-container">
-                    {% if alerts %}
-                        {% for alert in alerts %}
+                {% if alerts %}
+                    {% for alert in alerts %}
                         <div class="alert alert-{{ alert.level }} d-flex align-items-center shadow-sm border-start border-4 border-{{ alert.level }} py-2 px-3">
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            <div>
-                                {{ alert.message }}
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <div>
+                            {{ alert.message }}
                                 <small class="d-block text-muted mt-1"><i class="far fa-clock me-1"></i>{{ alert.timestamp }}</small>
-                            </div>
                         </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center text-muted py-4">
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">
                             <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-75"></i>
-                            <p>当前没有严重拥堵警报</p>
-                        </div>
-                    {% endif %}
-                </div>
+                        <p>当前没有严重拥堵警报</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
+</div>
 
-    <!-- 历史趋势图 -->
+<!-- 历史趋势图 -->
     <div class="row mt-1">
         <div class="col-12 px-1">
             <div class="card card-dashboard trend-chart-card">
                 <div class="card-header d-flex justify-content-between align-items-center py-2">
-                    <h5 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                         <i class="fas fa-chart-line me-2 text-primary"></i>交通拥堵历史趋势
-                    </h5>
+                </h5>
                     <div class="btn-group btn-group-sm" role="group">
                         <button type="button" class="btn btn-outline-primary active py-1" data-period="day">今日</button>
                         <button type="button" class="btn btn-outline-primary py-1" data-period="week">本周</button>
                         <button type="button" class="btn btn-outline-primary py-1" data-period="month">本月</button>
-                    </div>
+            </div>
                 </div>
                 <div class="card-body p-2">
-                    <div class="trend-chart-container">
-                        <canvas id="trendChart"></canvas>
-                    </div>
+                <div class="trend-chart-container">
+                    <canvas id="trendChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- 添加Toast容器 -->
@@ -730,7 +730,7 @@
     L.control.zoom({
         position: 'topright'
     }).addTo(map);
-
+    
     // 添加署名控件到右下角
     L.control.attribution({
         position: 'bottomright',
@@ -1048,7 +1048,7 @@
                                 // 在Shift键按下的情况下直接跳转，否则显示弹窗
                                 if (e.originalEvent && (e.originalEvent.shiftKey || e.originalEvent.metaKey)) {
                                     window.location.href = getRoadDetailUrl(roadId);
-                                } else {
+            } else {
                                     // 显示提示
                                     setTimeout(() => {
                                         showToast(`<span>按住Shift键点击可直接查看<a href="${getRoadDetailUrl(roadId)}" class="text-white ms-1 text-decoration-underline">路段详情</a></span>`, 'info');
