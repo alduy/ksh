@@ -191,13 +191,61 @@ class TrafficDataGenerator:
         real_time_data = []
         for segment in self.road_segments:
             data = self._generate_traffic_data(segment, time_factor, current_time)
+            
+            # 确保没有NaN值
+            for key, value in data.items():
+                if pd.isna(value):
+                    # 根据字段类型设置默认值
+                    if key == 'congestion_index':
+                        data[key] = 0.3
+                    elif key == 'average_speed':
+                        data[key] = 40.0
+                    elif key == 'traffic_flow':
+                        data[key] = 200
+                    elif key == 'latitude' or key == 'longitude':
+                        data[key] = 0.0
+                    elif key == 'status':
+                        data[key] = '畅通'
+                    elif key == 'road_name':
+                        data[key] = f"路段 #{segment['id']}"
+                    elif key == 'district':
+                        data[key] = "未知区域"
+                    elif isinstance(value, (int, float)):
+                        data[key] = 0
+                    elif isinstance(value, str):
+                        data[key] = ""
+                    else:
+                        data[key] = None
+            
             real_time_data.append(data)
         
         # 转换为DataFrame
         df = pd.DataFrame(real_time_data)
         
+        # 再次检查并清理任何NaN值
+        for col in df.columns:
+            if df[col].isna().any():
+                if col == 'congestion_index':
+                    df[col] = df[col].fillna(0.3)
+                elif col == 'average_speed':
+                    df[col] = df[col].fillna(40.0)
+                elif col == 'traffic_flow':
+                    df[col] = df[col].fillna(200)
+                elif col == 'status':
+                    df[col] = df[col].fillna('畅通')
+                elif col in ['latitude', 'longitude']:
+                    # 如果坐标缺失，设置为贵阳市中心
+                    df[col] = df[col].fillna(26.598194 if col == 'latitude' else 106.707410)
+                elif df[col].dtype in [np.int64, np.float64]:
+                    df[col] = df[col].fillna(0)
+                else:
+                    df[col] = df[col].fillna('')
+        
         # 添加到历史数据（可选，视内存使用情况而定）
         self.historical_data = pd.concat([self.historical_data, df], ignore_index=True)
+        
+        # 打印一条调试信息，确认数据是否正常
+        print(f"生成了 {len(df)} 条路段数据，监控路段数: {df['segment_id'].nunique()}")
         
         return df
     

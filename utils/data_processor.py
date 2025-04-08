@@ -175,26 +175,55 @@ class TrafficDataProcessor:
             统计信息的JSON格式数据
         """
         if traffic_data.empty:
-            return json.dumps({})
+            # 返回默认值避免NaN
+            return json.dumps({
+                'status_counts': {'畅通': 0, '轻度拥堵': 0, '中度拥堵': 0, '严重拥堵': 0},
+                'avg_congestion': 0.3,
+                'avg_speed': 40.0,
+                'district_stats': {},
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            })
+        
+        # 删除NaN值以避免计算问题
+        clean_data = traffic_data.dropna(subset=['congestion_index', 'average_speed', 'status'])
+        
+        if clean_data.empty:
+            # 如果清理后没有数据，返回默认值
+            return json.dumps({
+                'status_counts': {'畅通': 0, '轻度拥堵': 0, '中度拥堵': 0, '严重拥堵': 0},
+                'avg_congestion': 0.3,
+                'avg_speed': 40.0,
+                'district_stats': {},
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            })
         
         # 计算各种交通状态的数量
-        status_counts = traffic_data['status'].value_counts().to_dict()
+        status_counts = clean_data['status'].value_counts().to_dict()
         
-        # 计算平均拥堵指数
-        avg_congestion = traffic_data['congestion_index'].mean()
+        # 计算平均拥堵指数，确保是有效值
+        avg_congestion = clean_data['congestion_index'].mean()
+        if pd.isna(avg_congestion):
+            avg_congestion = 0.3  # 默认值
         
-        # 计算平均车速
-        avg_speed = traffic_data['average_speed'].mean()
+        # 计算平均车速，确保是有效值
+        avg_speed = clean_data['average_speed'].mean()
+        if pd.isna(avg_speed):
+            avg_speed = 40.0  # 默认值
         
         # 按区域分组统计
-        district_stats = traffic_data.groupby('district')['congestion_index'].mean().to_dict()
+        district_stats = {}
+        try:
+            district_group = clean_data.groupby('district')['congestion_index'].mean()
+            district_stats = {k: float(v) if not pd.isna(v) else 0.3 for k, v in district_group.to_dict().items()}
+        except Exception as e:
+            print(f"区域统计计算错误: {e}")
         
         # 统计总体信息
         statistics = {
             'status_counts': status_counts,
             'avg_congestion': float(avg_congestion),
             'avg_speed': float(avg_speed),
-            'district_stats': {k: float(v) for k, v in district_stats.items()},
+            'district_stats': district_stats,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         

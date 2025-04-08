@@ -2,190 +2,647 @@
 
 {% block title %}数据分析 - 贵阳市交通拥堵监测系统{% endblock %}
 
-{% block content %}
-<h2 class="mb-4">
-    <i class="fas fa-chart-line me-2"></i>交通数据分析
-</h2>
+{% block extra_css %}
+<style>
+    .analysis-container {
+        padding: 0.5rem;
+    }
+    
+    .analysis-card {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        border: none;
+        transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
+    }
+    
+    .analysis-card:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+    
+    .analysis-card .card-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        padding: 1rem 1.25rem;
+        background-color: white;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .analysis-card .card-body {
+        padding: 1.25rem;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+        width: 100%;
+    }
+    
+    .multi-chart-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        font-size: 0.9rem;
+    }
+    
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        margin-right: 5px;
+        border-radius: 2px;
+    }
+    
+    .filter-badge {
+        background-color: #f0f4f8;
+        border-radius: 20px;
+        padding: 0.3rem 0.8rem;
+        margin-right: 0.5rem;
+        font-size: 0.85rem;
+        color: #495057;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .filter-badge i {
+        margin-right: 5px;
+    }
+    
+    .insight-card {
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+        border-left: 4px solid #3772ff;
+    }
+    
+    .insight-card.positive {
+        border-left-color: #4caf50;
+    }
+    
+    .insight-card.negative {
+        border-left-color: #f44336;
+    }
+    
+    .insight-card.neutral {
+        border-left-color: #ffc107;
+    }
+    
+    .insight-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+    }
+    
+    .heatmap-table {
+        width: 100%;
+        font-size: 0.8rem;
+        border-collapse: separate;
+        border-spacing: 2px;
+    }
+    
+    .heatmap-table th {
+        text-align: center;
+        padding: 5px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .heatmap-table td {
+        text-align: center;
+        color: white;
+        text-shadow: 0 0 1px black;
+        padding: 6px 2px;
+        border-radius: 3px;
+    }
+    
+    .heatmap-table th:first-child,
+    .heatmap-table td:first-child {
+        font-weight: 600;
+        color: #495057;
+        text-shadow: none;
+        background-color: #f8f9fa;
+    }
+    
+    .time-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .time-btn {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        background-color: #f0f4f8;
+        border: none;
+        font-size: 0.85rem;
+        color: #495057;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .time-btn.active {
+        background-color: #3772ff;
+        color: white;
+    }
+    
+    .tab-content {
+        padding-top: 1rem;
+    }
+    
+    .road-stat-progress {
+        height: 6px;
+        border-radius: 3px;
+        margin-top: 3px;
+        background-color: rgba(0,0,0,0.05);
+    }
+    
+    .road-stat-bar {
+        height: 100%;
+        border-radius: 3px;
+    }
+    
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 280px;
+        }
+    }
+</style>
+{% endblock %}
 
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card analysis-filter">
-            <div class="card-body">
-                <form id="analysis-form" class="row g-3">
-                    <div class="col-md-3">
-                        <label for="date-range" class="form-label">日期范围</label>
-                        <select id="date-range" class="form-select">
-                            <option value="1">过去1天</option>
-                            <option value="3">过去3天</option>
-                            <option value="7" selected>过去7天</option>
-                            <option value="30">过去30天</option>
-                            <option value="custom">自定义</option>
-                        </select>
+{% block content %}
+<div class="analysis-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">
+            <i class="fas fa-chart-line me-2"></i>交通数据分析
+        </h2>
+        <div>
+            <span id="update-time" class="badge bg-light text-dark">
+                <i class="far fa-clock me-1"></i>更新于: {{ current_time }}
+            </span>
+        </div>
+    </div>
+    
+    <!-- 筛选条件 -->
+    <div class="card analysis-card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-filter me-2 text-primary"></i>分析参数设置
+            </h5>
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="save-preset">
+                    <i class="fas fa-save me-1"></i>保存设置
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="load-preset">
+                    <i class="fas fa-folder-open me-1"></i>加载设置
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <form id="analysis-form" class="row g-3">
+                <div class="col-md-3">
+                    <label for="date-range" class="form-label">日期范围</label>
+                    <select id="date-range" class="form-select">
+                        <option value="1">过去1天</option>
+                        <option value="3">过去3天</option>
+                        <option value="7" selected>过去7天</option>
+                        <option value="30">过去30天</option>
+                        <option value="90">过去3个月</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="district" class="form-label">区域</label>
+                    <select id="district" class="form-select">
+                        <option value="all" selected>全部区域</option>
+                        <option value="云岩区">云岩区</option>
+                        <option value="南明区">南明区</option>
+                        <option value="花溪区">花溪区</option>
+                        <option value="乌当区">乌当区</option>
+                        <option value="白云区">白云区</option>
+                        <option value="观山湖区">观山湖区</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="road-type" class="form-label">道路类型</label>
+                    <select id="road-type" class="form-select">
+                        <option value="all" selected>全部类型</option>
+                        <option value="主干道">主干道</option>
+                        <option value="次干道">次干道</option>
+                        <option value="支路">支路</option>
+                        <option value="快速路">快速路</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="time-period" class="form-label">时间段</label>
+                    <select id="time-period" class="form-select">
+                        <option value="all" selected>全天</option>
+                        <option value="morning_peak">早高峰 (7:00-9:00)</option>
+                        <option value="evening_peak">晚高峰 (17:00-19:00)</option>
+                        <option value="working_hours">工作时间 (9:00-17:00)</option>
+                        <option value="night">夜间 (19:00-7:00)</option>
+                        <option value="custom">自定义时间段</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <div id="active-filters" class="mb-3 d-none">
+                        <div class="small mb-1 text-muted">已应用的筛选条件:</div>
+                        <div id="filter-badges">
+                            <!-- 筛选条件标签将动态添加 -->
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label for="district" class="form-label">区域</label>
-                        <select id="district" class="form-select">
-                            <option value="all" selected>全部区域</option>
-                            <option value="云岩区">云岩区</option>
-                            <option value="南明区">南明区</option>
-                            <option value="花溪区">花溪区</option>
-                            <option value="乌当区">乌当区</option>
-                            <option value="白云区">白云区</option>
-                            <option value="观山湖区">观山湖区</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="road-type" class="form-label">道路类型</label>
-                        <select id="road-type" class="form-select">
-                            <option value="all" selected>全部类型</option>
-                            <option value="主干道">主干道</option>
-                            <option value="次干道">次干道</option>
-                            <option value="支路">支路</option>
-                            <option value="快速路">快速路</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="time-period" class="form-label">时间段</label>
-                        <select id="time-period" class="form-select">
-                            <option value="all" selected>全天</option>
-                            <option value="morning_peak">早高峰 (7:00-9:00)</option>
-                            <option value="evening_peak">晚高峰 (17:00-19:00)</option>
-                            <option value="working_hours">工作时间 (9:00-17:00)</option>
-                            <option value="night">夜间 (19:00-7:00)</option>
-                        </select>
-                    </div>
-                    <div class="col-12 text-end">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search me-1"></i>分析
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary ms-2" id="reset-filters">
+                </div>
+                <div class="col-12 d-flex justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" id="reset-filters">
                             <i class="fas fa-undo me-1"></i>重置
                         </button>
                     </div>
-                </form>
+                    <div>
+                        <button type="button" class="btn btn-outline-primary me-2" id="preview-data">
+                            <i class="fas fa-eye me-1"></i>预览数据
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>分析
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 分析总览 -->
+    <div class="card analysis-card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-th-large me-2 text-primary"></i>交通分析总览
+            </h5>
+            <div class="time-selector">
+                <button class="time-btn active" data-period="day">今日</button>
+                <button class="time-btn" data-period="week">本周</button>
+                <button class="time-btn" data-period="month">本月</button>
+                <button class="time-btn" data-period="year">全年</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3 mb-md-0">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">平均拥堵指数</h6>
+                            <h2 class="mb-1">0.68</h2>
+                            <div class="d-flex align-items-center">
+                                <span class="text-danger me-2"><i class="fas fa-arrow-up"></i> 0.05</span>
+                                <small class="text-muted">vs 上周同期</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3 mb-md-0">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">平均车速</h6>
+                            <h2 class="mb-1">24.5 <small>km/h</small></h2>
+                            <div class="d-flex align-items-center">
+                                <span class="text-success me-2"><i class="fas fa-arrow-up"></i> 1.2</span>
+                                <small class="text-muted">vs 上周同期</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3 mb-md-0">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">早高峰持续时间</h6>
+                            <h2 class="mb-1">2.3 <small>小时</small></h2>
+                            <div class="d-flex align-items-center">
+                                <span class="text-danger me-2"><i class="fas fa-arrow-up"></i> 0.2</span>
+                                <small class="text-muted">vs 上月平均</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">严重拥堵路段数</h6>
+                            <h2 class="mb-1">12</h2>
+                            <div class="d-flex align-items-center">
+                                <span class="text-success me-2"><i class="fas fa-arrow-down"></i> 3</span>
+                                <small class="text-muted">vs 上周同期</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="insight-card positive">
+                        <div class="insight-title"><i class="fas fa-thumbs-up me-2"></i>积极发现</div>
+                        <p class="mb-0">白云区拥堵指数较上月下降8.3%，主要得益于新开通的环城高架路段。</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="insight-card negative">
+                        <div class="insight-title"><i class="fas fa-exclamation-circle me-2"></i>需关注问题</div>
+                        <p class="mb-0">观山湖区金阳大道周二至周四早高峰拥堵加剧，平均通行时间增加12分钟。</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="row mb-4">
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header bg-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-area me-2"></i>拥堵指数趋势
-                </h5>
+    <!-- 图表区域 -->
+    <div class="row">
+        <!-- 多维度对比图 -->
+        <div class="col-md-7 mb-4">
+            <div class="card analysis-card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line me-2 text-primary"></i>拥堵指数趋势分析
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary active" data-chart-view="day">日视图</button>
+                        <button type="button" class="btn btn-outline-secondary" data-chart-view="week">周视图</button>
+                        <button type="button" class="btn btn-outline-secondary" data-chart-view="month">月视图</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="multiDimensionalChart"></canvas>
+                    </div>
+                    <div class="chart-legend mt-3">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: rgba(220, 53, 69, 0.8);"></div>
+                            <span>早高峰 (7:00-9:00)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: rgba(255, 193, 7, 0.8);"></div>
+                            <span>工作时段 (9:00-17:00)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: rgba(0, 123, 255, 0.8);"></div>
+                            <span>晚高峰 (17:00-19:00)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: rgba(108, 117, 125, 0.8);"></div>
+                            <span>夜间 (19:00-7:00)</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div style="height: 300px;">
-                    <canvas id="congestionTrendChart"></canvas>
+        </div>
+        
+        <!-- 区域对比雷达图 -->
+        <div class="col-md-5 mb-4">
+            <div class="card analysis-card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-radar me-2 text-primary"></i>区域交通状况雷达图
+                    </h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary active" data-radar-type="congestion">拥堵指数</button>
+                        <button type="button" class="btn btn-outline-secondary" data-radar-type="speed">平均车速</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="districtRadarChart"></canvas>
+                    </div>
+                    <div class="small text-muted text-center mt-3">
+                        该雷达图展示了贵阳市各区域的交通状况对比，数值越高表示拥堵越严重。
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header bg-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-pie me-2"></i>拥堵状态分布
-                </h5>
-            </div>
-            <div class="card-body">
-                <div style="height: 300px;">
-                    <canvas id="congestionDistributionChart"></canvas>
+    <div class="row">
+        <!-- 拥堵状态分布 -->
+        <div class="col-lg-5 mb-4">
+            <div class="card analysis-card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2 text-primary"></i>拥堵状态分布分析
+                    </h5>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="distChartDropdown" data-bs-toggle="dropdown">
+                            图表类型
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="distChartDropdown">
+                            <li><a class="dropdown-item active" href="#" data-dist-chart="pie">饼图</a></li>
+                            <li><a class="dropdown-item" href="#" data-dist-chart="doughnut">环形图</a></li>
+                            <li><a class="dropdown-item" href="#" data-dist-chart="polar">极区图</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-2 text-center">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary active" data-time="week">本周</button>
+                            <button type="button" class="btn btn-outline-primary" data-time="lastWeek">上周</button>
+                            <button type="button" class="btn btn-outline-primary" data-time="month">本月</button>
+                        </div>
+                    </div>
+                    <div class="chart-container flex-grow-1 d-flex align-items-center justify-content-center">
+                        <canvas id="statusDistributionChart"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="p-2 rounded" style="background-color: rgba(40, 167, 69, 0.2);">
+                                    <div class="small text-muted">畅通</div>
+                                    <div class="fw-bold">35%</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="p-2 rounded" style="background-color: rgba(255, 193, 7, 0.2);">
+                                    <div class="small text-muted">轻度</div>
+                                    <div class="fw-bold">25%</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="p-2 rounded" style="background-color: rgba(253, 126, 20, 0.2);">
+                                    <div class="small text-muted">中度</div>
+                                    <div class="fw-bold">28%</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="p-2 rounded" style="background-color: rgba(220, 53, 69, 0.2);">
+                                    <div class="small text-muted">严重</div>
+                                    <div class="fw-bold">12%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header bg-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-bar me-2"></i>各区域拥堵指数对比
-                </h5>
-            </div>
-            <div class="card-body">
-                <div style="height: 300px;">
-                    <canvas id="districtComparisonChart"></canvas>
+        
+        <!-- 周度热力图 -->
+        <div class="col-lg-7 mb-4">
+            <div class="card analysis-card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-th me-2 text-primary"></i>交通拥堵周度热力图
+                    </h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary active" data-heatmap="congestion">拥堵指数</button>
+                        <button type="button" class="btn btn-outline-primary" data-heatmap="flow">流量</button>
+                        <button type="button" class="btn btn-outline-primary" data-heatmap="speed">速度</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="heatmapContainer">
+                        <!-- 热力图将在这里渲染 -->
+                    </div>
+                    <div class="mt-3 d-flex justify-content-center">
+                        <div style="width: 300px; height: 20px; background: linear-gradient(to right, rgba(40, 167, 69, 0.7), rgba(255, 193, 7, 0.7), rgba(253, 126, 20, 0.7), rgba(220, 53, 69, 0.7))"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mt-1">
+                        <span>畅通 (0.0)</span>
+                        <span>轻度拥堵 (0.4)</span>
+                        <span>中度拥堵 (0.7)</span>
+                        <span>严重拥堵 (1.0)</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header bg-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-clock me-2"></i>一周拥堵时间热力图
-                </h5>
-            </div>
-            <div class="card-body">
-                <div style="height: 300px;" id="heatmapContainer">
-                    <!-- 热力图将在这里渲染 -->
-                </div>
+    <!-- 拥堵路段 TOP 分析 -->
+    <div class="card analysis-card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-list-ol me-2 text-primary"></i>拥堵路段 TOP 10 详细分析
+            </h5>
+            <div>
+                <button class="btn btn-sm btn-outline-primary" id="export-data">
+                    <i class="fas fa-file-export me-1"></i>导出数据
+                </button>
             </div>
         </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-white">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-table me-2"></i>拥堵路段TOP 10
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>排名</th>
-                                <th>路段名称</th>
-                                <th>所属区域</th>
-                                <th>平均拥堵指数</th>
-                                <th>平均车速</th>
-                                <th>拥堵高峰时段</th>
-                                <th>拥堵频率</th>
-                            </tr>
-                        </thead>
-                        <tbody id="top-congested-table">
-                            <!-- 示例数据 -->
-                            <tr>
-                                <td>1</td>
-                                <td>花果园大街</td>
-                                <td>南明区</td>
-                                <td>0.86</td>
-                                <td>15.3 km/h</td>
-                                <td>17:00-19:00</td>
-                                <td>78%</td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>金阳大道</td>
-                                <td>观山湖区</td>
-                                <td>0.82</td>
-                                <td>18.1 km/h</td>
-                                <td>7:30-9:30</td>
-                                <td>72%</td>
-                            </tr>
-                            <tr>
-                                <td>3</td>
-                                <td>中华北路</td>
-                                <td>云岩区</td>
-                                <td>0.79</td>
-                                <td>19.5 km/h</td>
-                                <td>17:30-19:00</td>
-                                <td>68%</td>
-                            </tr>
-                            <!-- 此处将展示更多行 -->
-                        </tbody>
-                    </table>
+        <div class="card-body">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="roads-avg-tab" data-bs-toggle="tab" data-bs-target="#roads-avg" type="button" role="tab">平均拥堵指数</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="roads-peak-tab" data-bs-toggle="tab" data-bs-target="#roads-peak" type="button" role="tab">高峰期拥堵</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="roads-frequency-tab" data-bs-toggle="tab" data-bs-target="#roads-frequency" type="button" role="tab">拥堵频率</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="roads-duration-tab" data-bs-toggle="tab" data-bs-target="#roads-duration" type="button" role="tab">拥堵持续时间</button>
+                </li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="roads-avg" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>排名</th>
+                                    <th>路段名称</th>
+                                    <th>所属区域</th>
+                                    <th style="width: 15%">平均拥堵指数</th>
+                                    <th>平均车速</th>
+                                    <th>拥堵高峰时段</th>
+                                    <th>拥堵频率</th>
+                                    <th>拥堵变化</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-congested-table">
+                                <tr>
+                                    <td>1</td>
+                                    <td><a href="#" class="text-decoration-none">花果园大街</a></td>
+                                    <td>南明区</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-2">0.86</span>
+                                            <div class="road-stat-progress flex-grow-1">
+                                                <div class="road-stat-bar bg-danger" style="width: 86%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>15.3 km/h</td>
+                                    <td>17:00-19:00</td>
+                                    <td>78%</td>
+                                    <td><span class="text-danger"><i class="fas fa-arrow-up"></i> 3%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td><a href="#" class="text-decoration-none">金阳大道</a></td>
+                                    <td>观山湖区</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-2">0.82</span>
+                                            <div class="road-stat-progress flex-grow-1">
+                                                <div class="road-stat-bar bg-danger" style="width: 82%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>18.1 km/h</td>
+                                    <td>7:30-9:30</td>
+                                    <td>72%</td>
+                                    <td><span class="text-success"><i class="fas fa-arrow-down"></i> 2%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td><a href="#" class="text-decoration-none">中华北路</a></td>
+                                    <td>云岩区</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-2">0.79</span>
+                                            <div class="road-stat-progress flex-grow-1">
+                                                <div class="road-stat-bar bg-danger" style="width: 79%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>19.5 km/h</td>
+                                    <td>17:30-19:00</td>
+                                    <td>68%</td>
+                                    <td><span class="text-danger"><i class="fas fa-arrow-up"></i> 5%</span></td>
+                                </tr>
+                                <!-- 更多行 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="roads-peak" role="tabpanel">
+                    <!-- 高峰期拥堵内容 -->
+                    <div class="alert alert-info">
+                        高峰期拥堵路段分析数据将在这里显示
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="roads-frequency" role="tabpanel">
+                    <!-- 拥堵频率内容 -->
+                    <div class="alert alert-info">
+                        拥堵频率分析数据将在这里显示
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="roads-duration" role="tabpanel">
+                    <!-- 拥堵持续时间内容 -->
+                    <div class="alert alert-info">
+                        拥堵持续时间分析数据将在这里显示
+                    </div>
                 </div>
             </div>
         </div>
@@ -194,100 +651,893 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.2.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0"></script>
+
 <script>
+    // 注册Chart.js插件
+    Chart.register(ChartDataLabels);
+    
+    // 设置全局Chart配置
+    Chart.defaults.font.family = "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+    Chart.defaults.color = '#666';
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.cornerRadius = 6;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+    Chart.defaults.elements.point.radius = 4;
+    Chart.defaults.elements.point.hoverRadius = 6;
+    Chart.defaults.elements.line.tension = 0.4;
+    Chart.defaults.plugins.datalabels.display = false;
+    
+    // 自定义主题颜色
+    const themeColors = {
+        primary: '#3772ff',
+        secondary: '#6c757d',
+        success: '#28a745',
+        danger: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8',
+        light: '#f8f9fa',
+        dark: '#343a40',
+        orange: '#fd7e14',
+        teal: '#20c997',
+        indigo: '#6610f2',
+        purple: '#6f42c1'
+    };
+    
+    // 图表动画配置
+    const defaultAnimation = {
+        duration: 1200,
+        easing: 'easeOutQuart'
+    };
+    
+    // 用于多个图表的渐变
+    function createGradient(ctx, color1, color2) {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, color1);
+        gradient.addColorStop(1, color2);
+        return gradient;
+    }
+    
+    // 格式化数字辅助函数
+    function formatNumber(num) {
+        return num.toLocaleString('zh-CN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
-        // 拥堵指数趋势图
-        var trendChart = new Chart(document.getElementById('congestionTrendChart').getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: ['5/1', '5/2', '5/3', '5/4', '5/5', '5/6', '5/7'],
-                datasets: [{
-                    label: '平均拥堵指数',
-                    data: [0.45, 0.67, 0.58, 0.63, 0.72, 0.52, 0.48],
-                    borderColor: '#dc3545',
+        // 初始化所有图表
+        initMultiDimensionalChart();
+        initDistrictRadarChart();
+        initStatusDistributionChart();
+        generateHeatmap();
+        initButtonListeners();
+        
+        // 表单事件处理
+        initFormEventHandlers();
+    });
+    
+    // 初始化按钮和切换监听器
+    function initButtonListeners() {
+        // 时间选择按钮
+        document.querySelectorAll('.time-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const period = this.dataset.period;
+                // 这里可以添加数据更新逻辑
+                showToast(`已切换到${this.innerText}数据视图`, 'info');
+            });
+        });
+        
+        // 雷达图类型切换
+        document.querySelectorAll('[data-radar-type]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-radar-type]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // 更新雷达图数据类型
+                const type = this.dataset.radarType;
+                updateRadarChartType(type);
+            });
+        });
+        
+        // 多维度图表视图切换
+        document.querySelectorAll('[data-chart-view]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-chart-view]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // 更新图表视图
+                const view = this.dataset.chartView;
+                updateMultiDimensionalChartView(view);
+            });
+        });
+        
+        // 热力图类型切换
+        document.querySelectorAll('[data-heatmap]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-heatmap]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // 更新热力图数据类型
+                const type = this.dataset.heatmap;
+                updateHeatmapType(type);
+            });
+        });
+        
+        // 分布图类型切换
+        document.querySelectorAll('[data-dist-chart]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('[data-dist-chart]').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                
+                // 更新分布图类型
+                const chartType = this.dataset.distChart;
+                updateDistributionChartType(chartType);
+            });
+        });
+    }
+    
+    // 表单事件处理初始化
+    function initFormEventHandlers() {
+        const form = document.getElementById('analysis-form');
+        const resetBtn = document.getElementById('reset-filters');
+        const previewBtn = document.getElementById('preview-data');
+        const savePresetBtn = document.getElementById('save-preset');
+        const loadPresetBtn = document.getElementById('load-preset');
+        
+        // 重置按钮
+        resetBtn.addEventListener('click', function() {
+            form.reset();
+            document.getElementById('active-filters').classList.add('d-none');
+            showToast('已重置所有筛选条件', 'info');
+        });
+        
+        // 预览数据
+        previewBtn.addEventListener('click', function() {
+            showToast('正在加载数据预览...', 'info');
+            // 在实际应用中应该有AJAX请求
+            setTimeout(() => {
+                showToast('数据加载完成', 'success');
+            }, 1500);
+        });
+        
+        // 保存预设
+        savePresetBtn.addEventListener('click', function() {
+            const presetName = prompt('请输入预设名称:', '预设 ' + new Date().toLocaleDateString());
+            if (presetName) {
+                // 在实际应用中应该保存表单数据
+                showToast(`预设"${presetName}"已保存`, 'success');
+            }
+        });
+        
+        // 加载预设
+        loadPresetBtn.addEventListener('click', function() {
+            // 在实际应用中应显示预设列表
+            showToast('预设加载功能将在后续开发', 'info');
+        });
+        
+        // 表单提交
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // 显示活动筛选条件
+            updateActiveFilters();
+            
+            // 在实际应用中应该有AJAX请求
+            showToast('正在分析数据...请稍候', 'info');
+            
+            // 模拟加载
+            setTimeout(() => {
+                showToast('数据分析完成', 'success');
+                refreshAllCharts();
+            }, 1500);
+        });
+    }
+    
+    // 更新活动筛选条件显示
+    function updateActiveFilters() {
+        const activeFilters = document.getElementById('active-filters');
+        const filterBadges = document.getElementById('filter-badges');
+        
+        // 获取所有筛选值
+        const dateRange = document.getElementById('date-range');
+        const district = document.getElementById('district');
+        const roadType = document.getElementById('road-type');
+        const timePeriod = document.getElementById('time-period');
+        
+        // 构建筛选条件标签
+        let badgesHtml = '';
+        
+        if (dateRange.value !== 'all') {
+            const dateText = dateRange.options[dateRange.selectedIndex].text;
+            badgesHtml += `<span class="filter-badge"><i class="far fa-calendar-alt"></i>${dateText}</span>`;
+        }
+        
+        if (district.value !== 'all') {
+            badgesHtml += `<span class="filter-badge"><i class="fas fa-map-marker-alt"></i>${district.value}</span>`;
+        }
+        
+        if (roadType.value !== 'all') {
+            badgesHtml += `<span class="filter-badge"><i class="fas fa-road"></i>${roadType.value}</span>`;
+        }
+        
+        if (timePeriod.value !== 'all') {
+            const timeText = timePeriod.options[timePeriod.selectedIndex].text;
+            badgesHtml += `<span class="filter-badge"><i class="far fa-clock"></i>${timeText}</span>`;
+        }
+        
+        if (badgesHtml) {
+            filterBadges.innerHTML = badgesHtml;
+            activeFilters.classList.remove('d-none');
+        } else {
+            activeFilters.classList.add('d-none');
+        }
+    }
+    
+    // 多维度分析图表
+    function initMultiDimensionalChart() {
+        const ctx = document.getElementById('multiDimensionalChart').getContext('2d');
+        
+        // 创建渐变
+        const gradients = {
+            morning: createGradient(ctx, 'rgba(220, 53, 69, 0.7)', 'rgba(220, 53, 69, 0.1)'),
+            working: createGradient(ctx, 'rgba(255, 193, 7, 0.7)', 'rgba(255, 193, 7, 0.1)'),
+            evening: createGradient(ctx, 'rgba(0, 123, 255, 0.7)', 'rgba(0, 123, 255, 0.1)'),
+            night: createGradient(ctx, 'rgba(108, 117, 125, 0.7)', 'rgba(108, 117, 125, 0.1)')
+        };
+        
+        // 日视图数据
+        const dayData = {
+            labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+            datasets: [
+                {
+                    label: '早高峰 (7:00-9:00)',
+                    data: [0.2, 0.2, 0.2, 0.3, 0.8, 0.9, 0.7, 0.6, 0.6, 0.8, 0.6, 0.4],
+                    borderColor: 'rgba(220, 53, 69, 0.8)',
+                    backgroundColor: gradients.morning,
+                    fill: true,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(220, 53, 69, 0.8)',
+                    hidden: true
+                },
+                {
+                    label: '工作时段 (9:00-17:00)',
+                    data: [0.2, 0.2, 0.2, 0.3, 0.6, 0.6, 0.6, 0.5, 0.5, 0.7, 0.5, 0.3],
+                    borderColor: 'rgba(255, 193, 7, 0.8)',
+                    backgroundColor: gradients.working,
+                    fill: true,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(255, 193, 7, 0.8)',
+                    hidden: true
+                },
+                {
+                    label: '晚高峰 (17:00-19:00)',
+                    data: [0.2, 0.1, 0.1, 0.3, 0.7, 0.6, 0.5, 0.6, 0.7, 0.9, 0.7, 0.4],
+                    borderColor: 'rgba(0, 123, 255, 0.8)',
+                    backgroundColor: gradients.evening,
+                    fill: true,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(0, 123, 255, 0.8)',
+                    hidden: true
+                },
+                {
+                    label: '全天平均',
+                    data: [0.2, 0.15, 0.15, 0.3, 0.7, 0.7, 0.6, 0.55, 0.6, 0.8, 0.6, 0.35],
+                    borderColor: '#3772ff',
+                    backgroundColor: 'transparent',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3772ff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: false
+                }
+            ]
+        };
+        
+        // 周视图数据
+        const weekData = {
+            labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+            datasets: [
+                {
+                    label: '早高峰 (7:00-9:00)',
+                    data: [0.85, 0.82, 0.79, 0.81, 0.83, 0.55, 0.45],
+                    borderColor: 'rgba(220, 53, 69, 0.8)',
+                    backgroundColor: 'rgba(220, 53, 69, 0.3)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(220, 53, 69, 0.8)'
+                },
+                {
+                    label: '工作时段 (9:00-17:00)',
+                    data: [0.65, 0.67, 0.64, 0.66, 0.62, 0.48, 0.42],
+                    borderColor: 'rgba(255, 193, 7, 0.8)',
+                    backgroundColor: 'rgba(255, 193, 7, 0.3)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(255, 193, 7, 0.8)'
+                },
+                {
+                    label: '晚高峰 (17:00-19:00)',
+                    data: [0.87, 0.85, 0.88, 0.86, 0.92, 0.75, 0.65],
+                    borderColor: 'rgba(0, 123, 255, 0.8)',
+                    backgroundColor: 'rgba(0, 123, 255, 0.3)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(0, 123, 255, 0.8)'
+                },
+                {
+                    label: '夜间 (19:00-7:00)',
+                    data: [0.35, 0.32, 0.34, 0.33, 0.38, 0.42, 0.31],
+                    borderColor: 'rgba(108, 117, 125, 0.8)',
+                    backgroundColor: 'rgba(108, 117, 125, 0.3)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: 'rgba(108, 117, 125, 0.8)'
+                }
+            ]
+        };
+        
+        // 月视图数据
+        const monthData = {
+            labels: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
+            datasets: [
+                {
+                    label: '早高峰 (7:00-9:00)',
+                    data: [0.72, 0.68, 0.75, 0.73, 0.77, 0.82, 0.79, 0.76, 0.8, 0.78, 0.81, 0.75],
+                    borderColor: 'rgba(220, 53, 69, 0.8)',
                     backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
+                    fill: false,
+                    borderWidth: 3
+                },
+                {
+                    label: '晚高峰 (17:00-19:00)',
+                    data: [0.76, 0.71, 0.77, 0.75, 0.79, 0.85, 0.82, 0.78, 0.84, 0.82, 0.86, 0.78],
+                    borderColor: 'rgba(0, 123, 255, 0.8)',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    fill: false,
+                    borderWidth: 3
+                }
+            ]
+        };
+        
+        // 创建图表
+        window.multiChart = new Chart(ctx, {
+            type: 'line',
+            data: dayData,
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: defaultAnimation,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
                         max: 1,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(1);
+                            },
+                            font: {
+                                size: 11
+                            }
+                        },
                         title: {
                             display: true,
-                            text: '拥堵指数'
+                            text: '拥堵指数',
+                            font: {
+                                size: 13,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 11
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '时间',
+                            font: {
+                                size: 13,
+                                weight: 'bold'
+                            }
                         }
                     }
-                }
-            }
-        });
-        
-        // 拥堵状态分布图
-        var distributionChart = new Chart(document.getElementById('congestionDistributionChart').getContext('2d'), {
-            type: 'pie',
-            data: {
-                labels: ['畅通', '轻度拥堵', '中度拥堵', '严重拥堵'],
-                datasets: [{
-                    data: [35, 25, 28, 12],
-                    backgroundColor: [
-                        '#28a745',
-                        '#ffc107',
-                        '#fd7e14',
-                        '#dc3545'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                },
                 plugins: {
                     legend: {
-                        position: 'right'
-                    }
-                }
-            }
-        });
-        
-        // 各区域拥堵指数对比图
-        var districtChart = new Chart(document.getElementById('districtComparisonChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: ['云岩区', '南明区', '花溪区', '乌当区', '白云区', '观山湖区'],
-                datasets: [{
-                    label: '平均拥堵指数',
-                    data: [0.68, 0.72, 0.58, 0.52, 0.61, 0.65],
-                    backgroundColor: [
-                        'rgba(52, 152, 219, 0.7)',
-                        'rgba(231, 76, 60, 0.7)',
-                        'rgba(241, 196, 15, 0.7)',
-                        'rgba(46, 204, 113, 0.7)',
-                        'rgba(155, 89, 182, 0.7)',
-                        'rgba(230, 126, 34, 0.7)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 1,
-                        title: {
-                            display: true,
-                            text: '拥堵指数'
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        },
+                        onClick: function(e, legendItem, legend) {
+                            const index = legendItem.datasetIndex;
+                            const chart = legend.chart;
+                            
+                            // 判断是"全天平均"图层
+                            if (index === 3 && chart.data.datasets[index].label === '全天平均') {
+                                return; // 保持"全天平均"图层始终显示
+                            }
+                            
+                            // 其他图层的默认切换行为
+                            Chart.defaults.plugins.legend.onClick.call(this, e, legendItem, legend);
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.parsed.y;
+                                return `${label}: ${value.toFixed(2)}`;
+                            }
+                        }
+                    },
+                    zoom: {
+                        pan: {
+                            enabled: true,
+                            mode: 'x'
+                        },
+                        zoom: {
+                            wheel: {
+                                enabled: true
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'x'
                         }
                     }
                 }
             }
         });
         
+        // 存储不同视图的数据
+        window.chartViewsData = {
+            day: dayData,
+            week: weekData,
+            month: monthData
+        };
+    }
+    
+    // 更新多维度图表视图
+    function updateMultiDimensionalChartView(view) {
+        const chart = window.multiChart;
+        const newData = window.chartViewsData[view];
+        
+        if (!chart || !newData) {
+            console.error('Chart or data not available');
+            return;
+        }
+        
+        // 更新数据和重绘图表
+        chart.data.labels = newData.labels;
+        chart.data.datasets = newData.datasets;
+        chart.update();
+        
+        // 调整Y轴标题
+        let titleText = '拥堵指数';
+        if (view === 'month') {
+            chart.options.scales.x.title.text = '月份';
+        } else if (view === 'week') {
+            chart.options.scales.x.title.text = '星期';
+        } else {
+            chart.options.scales.x.title.text = '时间';
+        }
+        
+        chart.update('none'); // 不使用动画更新
+    }
+    
+    // 区域交通状况雷达图
+    function initDistrictRadarChart() {
+        const ctx = document.getElementById('districtRadarChart').getContext('2d');
+        
+        // 准备数据
+        const congestionData = {
+            labels: ['云岩区', '南明区', '花溪区', '乌当区', '白云区', '观山湖区'],
+            datasets: [{
+                label: '拥堵指数',
+                data: [0.68, 0.72, 0.58, 0.52, 0.61, 0.65],
+                backgroundColor: 'rgba(55, 114, 255, 0.3)',
+                borderColor: 'rgba(55, 114, 255, 0.8)',
+                borderWidth: 2,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: 'rgba(55, 114, 255, 0.8)',
+                pointHoverBackgroundColor: '#ffffff',
+                pointHoverBorderColor: 'rgba(55, 114, 255, 1)',
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        };
+        
+        const speedData = {
+            labels: ['云岩区', '南明区', '花溪区', '乌当区', '白云区', '观山湖区'],
+            datasets: [{
+                label: '平均车速(km/h)',
+                data: [23.5, 21.8, 26.2, 28.5, 25.1, 24.3],
+                backgroundColor: 'rgba(40, 167, 69, 0.3)',
+                borderColor: 'rgba(40, 167, 69, 0.8)',
+                borderWidth: 2,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: 'rgba(40, 167, 69, 0.8)',
+                pointHoverBackgroundColor: '#ffffff',
+                pointHoverBorderColor: 'rgba(40, 167, 69, 1)',
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        };
+        
+        // 创建雷达图
+        window.radarChart = new Chart(ctx, {
+            type: 'radar',
+            data: congestionData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                elements: {
+                    line: {
+                        tension: 0.2
+                    }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: congestionData.datasets[0].label === '拥堵指数' ? 1 : 50,
+                        ticks: {
+                            display: false
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        angleLines: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        pointLabels: {
+                            font: {
+                                size: 13,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        titleFont: {
+                            size: 14
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                let value = context.parsed.r;
+                                return `${label}: ${value.toFixed(2)}`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#fff',
+                        backgroundColor: function(context) {
+                            return context.dataset.borderColor;
+                        },
+                        borderRadius: 4,
+                        font: {
+                            weight: 'bold',
+                            size: 10
+                        },
+                        padding: 4,
+                        formatter: function(value) {
+                            return value.toFixed(2);
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 存储不同类型的数据
+        window.radarTypes = {
+            congestion: congestionData,
+            speed: speedData
+        };
+    }
+    
+    // 更新雷达图数据类型
+    function updateRadarChartType(type) {
+        const chart = window.radarChart;
+        const newData = window.radarTypes[type];
+        
+        if (!chart || !newData) {
+            return;
+        }
+        
+        // 更新数据
+        chart.data.datasets = newData.datasets;
+        
+        // 根据类型更新最大值
+        if (type === 'congestion') {
+            chart.options.scales.r.max = 1;
+        } else if (type === 'speed') {
+            chart.options.scales.r.max = 50;
+        }
+        
+        chart.update();
+    }
+    
+    // 拥堵状态分布图
+    function initStatusDistributionChart() {
+        const ctx = document.getElementById('statusDistributionChart').getContext('2d');
+        
+        // 准备本周数据
+        const thisWeekData = {
+            labels: ['畅通', '轻度拥堵', '中度拥堵', '严重拥堵'],
+            datasets: [{
+                data: [35, 25, 28, 12],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',  // 畅通-绿色
+                    'rgba(255, 193, 7, 0.8)',  // 轻度-黄色
+                    'rgba(253, 126, 20, 0.8)', // 中度-橙色
+                    'rgba(220, 53, 69, 0.8)'   // 严重-红色
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(253, 126, 20, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 1,
+                hoverOffset: 15
+            }]
+        };
+        
+        // 准备上周数据
+        const lastWeekData = {
+            labels: ['畅通', '轻度拥堵', '中度拥堵', '严重拥堵'],
+            datasets: [{
+                data: [32, 28, 25, 15],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(253, 126, 20, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(253, 126, 20, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 1,
+                hoverOffset: 15
+            }]
+        };
+        
+        // 准备本月数据
+        const thisMonthData = {
+            labels: ['畅通', '轻度拥堵', '中度拥堵', '严重拥堵'],
+            datasets: [{
+                data: [38, 24, 26, 12],
+                backgroundColor: [
+                    'rgba(40, 167, 69, 0.8)',
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(253, 126, 20, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(40, 167, 69, 1)',
+                    'rgba(255, 193, 7, 1)',
+                    'rgba(253, 126, 20, 1)',
+                    'rgba(220, 53, 69, 1)'
+                ],
+                borderWidth: 1,
+                hoverOffset: 15
+            }]
+        };
+        
+        // 创建分布图
+        window.distributionChart = new Chart(ctx, {
+            type: 'pie',
+            data: thisWeekData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    animateRotate: true,
+                    animateScale: true
+                },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            },
+                            generateLabels: function(chart) {
+                                // 自定义图例标签
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map(function(label, i) {
+                                        const meta = chart.getDatasetMeta(0);
+                                        const ds = data.datasets[0];
+                                        const arc = meta.data[i];
+                                        const value = ds.data[i];
+                                        const percentage = ((value / ds.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1) + '%';
+                                        
+                                        return {
+                                            text: `${label} (${percentage})`,
+                                            fillStyle: ds.backgroundColor[i],
+                                            strokeStyle: ds.borderColor[i],
+                                            lineWidth: 1,
+                                            hidden: isNaN(ds.data[i]) || meta.data[i].hidden,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#fff',
+                        font: {
+                            weight: 'bold',
+                            size: 12
+                        },
+                        formatter: function(value, context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return percentage + '%';
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 存储不同时间的数据
+        window.distributionTimes = {
+            week: thisWeekData,
+            lastWeek: lastWeekData,
+            month: thisMonthData
+        };
+        
+        // 存储图表类型
+        window.distributionTypes = {
+            pie: 'pie',
+            doughnut: 'doughnut',
+            polar: 'polarArea'
+        };
+        
+        // 添加切换按钮事件
+        document.querySelectorAll('[data-time]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-time]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                const timeKey = this.dataset.time;
+                updateDistributionTime(timeKey);
+            });
+        });
+    }
+    
+    // 更新分布图时间段
+    function updateDistributionTime(timeKey) {
+        const chart = window.distributionChart;
+        const newData = window.distributionTimes[timeKey];
+        
+        if (!chart || !newData) {
+            return;
+        }
+        
+        // 更新数据
+        chart.data.datasets = newData.datasets;
+        chart.update();
+    }
+    
+    // 更新分布图类型
+    function updateDistributionChartType(type) {
+        const chart = window.distributionChart;
+        
+        if (!chart || !window.distributionTypes[type]) {
+            return;
+        }
+        
+        // 保存当前数据
+        const currentData = chart.data;
+        
+        // 销毁当前图表
+        chart.destroy();
+        
+        // 创建新图表类型
+        const ctx = document.getElementById('statusDistributionChart').getContext('2d');
+        
+        // 为极区图调整选项
+        let options = chart.options;
+        if (type === 'polarArea') {
+            options.scales = {
+                r: {
+                    beginAtZero: true,
+                    ticks: {
+                        display: false
+                    }
+                }
+            };
+        }
+        
+        // 创建新图表
+        window.distributionChart = new Chart(ctx, {
+            type: window.distributionTypes[type],
+            data: currentData,
+            options: options
+        });
+        
+        // 更新图表
+        window.distributionChart.update();
+    }
+    
+    // 周度热力图
+    function generateHeatmap() {
         // 热力图示例数据（实际应用中应从后端获取）
-        var heatmapData = [
+        const congestionData = [
             // 24小时 x 7天的数据矩阵
             // 每行代表一个小时，每列代表一周中的一天
             // 值表示拥堵指数 (0-1)
@@ -317,18 +1567,45 @@
             [0.3, 0.3, 0.3, 0.3, 0.3, 0.2, 0.2], // 23:00
         ];
         
-        // 由于我们没有引入专门的热力图库，这里用简单的HTML表格展示热力图效果
-        var heatmapHtml = '<table class="table table-bordered heatmap-table">';
+        // 流量数据
+        const flowData = congestionData.map(row => 
+            row.map(value => Math.min(1, value * 1.2 + Math.random() * 0.2 - 0.1))
+        );
+        
+        // 速度数据 (值越低表示速度越慢，拥堵越严重)
+        const speedData = congestionData.map(row => 
+            row.map(value => Math.max(0, 1 - value * 0.9 - Math.random() * 0.1))
+        );
+        
+        // 存储不同类型的热力图数据
+        window.heatmapTypes = {
+            congestion: congestionData,
+            flow: flowData,
+            speed: speedData
+        };
+        
+        // 初始化展示拥堵指数热力图
+        renderHeatmap('congestion');
+    }
+    
+    // 渲染热力图
+    function renderHeatmap(type) {
+        const data = window.heatmapTypes[type];
+        
+        // 创建热力图HTML
+        let heatmapHtml = '<table class="table heatmap-table">';
         heatmapHtml += '<thead><tr><th></th><th>周一</th><th>周二</th><th>周三</th><th>周四</th><th>周五</th><th>周六</th><th>周日</th></tr></thead>';
         heatmapHtml += '<tbody>';
         
-        for (var i = 0; i < 24; i++) {
+        for (let i = 0; i < 24; i++) {
             heatmapHtml += '<tr>';
-            heatmapHtml += '<td>' + i + ':00</td>';
+            heatmapHtml += `<td>${String(i).padStart(2, '0')}:00</td>`;
             
-            for (var j = 0; j < 7; j++) {
-                var color = getHeatmapColor(heatmapData[i][j]);
-                heatmapHtml += '<td style="background-color: ' + color + ';">' + heatmapData[i][j].toFixed(1) + '</td>';
+            for (let j = 0; j < 7; j++) {
+                const value = data[i][j];
+                const color = getHeatmapColor(value, type);
+                const displayValue = type === 'speed' ? (1 - value).toFixed(1) : value.toFixed(1);
+                heatmapHtml += `<td style="background-color: ${color};" title="${i}:00, ${['周一', '周二', '周三', '周四', '周五', '周六', '周日'][j]}: ${displayValue}">${displayValue}</td>`;
             }
             
             heatmapHtml += '</tr>';
@@ -336,44 +1613,108 @@
         
         heatmapHtml += '</tbody></table>';
         document.getElementById('heatmapContainer').innerHTML = heatmapHtml;
-        
-        // 辅助函数：根据拥堵指数获取对应的颜色
-        function getHeatmapColor(value) {
-            if (value < 0.3) {
-                return 'rgba(40, 167, 69, ' + (value + 0.2) + ')';  // 绿色，畅通
-            } else if (value < 0.5) {
-                return 'rgba(255, 193, 7, ' + (value + 0.2) + ')';  // 黄色，较畅通
-            } else if (value < 0.7) {
-                return 'rgba(253, 126, 20, ' + (value + 0.2) + ')'; // 橙色，轻度拥堵
-            } else {
-                return 'rgba(220, 53, 69, ' + (value + 0.2) + ')';  // 红色，严重拥堵
-            }
-        }
-        
-        // 表单重置功能
-        document.getElementById('reset-filters').addEventListener('click', function() {
-            document.getElementById('analysis-form').reset();
-        });
-        
-        // 表单提交功能
-        document.getElementById('analysis-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            // 这里应该发送AJAX请求获取新的分析数据
-            alert('正在分析数据，实际应用中会发送AJAX请求获取新的分析结果');
-        });
-    });
-</script>
-
-<style>
-    .heatmap-table {
-        width: 100%;
-        font-size: 0.8rem;
     }
     
-    .heatmap-table td {
-        text-align: center;
-        color: white;
-        text-shadow: 0 0 1px black;
+    // 更新热力图类型
+    function updateHeatmapType(type) {
+        renderHeatmap(type);
     }
-</style>
+    
+    // 根据拥堵指数或其他值获取对应的颜色
+    function getHeatmapColor(value, type = 'congestion') {
+        // 速度数据反向显示颜色（值越低表示速度越慢，应该显示红色）
+        if (type === 'speed') {
+            value = 1 - value;
+        }
+        
+        if (value < 0.3) {
+            return `rgba(40, 167, 69, ${Math.max(0.5, value + 0.3)})`;  // 绿色，畅通
+        } else if (value < 0.5) {
+            return `rgba(255, 193, 7, ${Math.max(0.5, value + 0.2)})`;  // 黄色，较畅通
+        } else if (value < 0.7) {
+            return `rgba(253, 126, 20, ${Math.max(0.5, value + 0.2)})`; // 橙色，轻度拥堵
+        } else {
+            return `rgba(220, 53, 69, ${Math.max(0.5, value + 0.2)})`;  // 红色，严重拥堵
+        }
+    }
+    
+    // 刷新所有图表（在实际应用中会加载新数据）
+    function refreshAllCharts() {
+        // 这里可以添加AJAX请求，获取新数据
+        // 示例代码只是做简单的更新
+        
+        if (window.multiChart) {
+            // 轻微调整数据以演示变化
+            window.multiChart.data.datasets.forEach(dataset => {
+                dataset.data = dataset.data.map(value => 
+                    Math.max(0, Math.min(1, value + (Math.random() * 0.1 - 0.05)))
+                );
+            });
+            window.multiChart.update();
+        }
+        
+        if (window.radarChart) {
+            // 更新雷达图数据
+            window.radarChart.data.datasets[0].data = window.radarChart.data.datasets[0].data.map(value => 
+                window.radarChart.data.datasets[0].label.includes('车速') ? 
+                Math.max(10, Math.min(50, value + (Math.random() * 3 - 1.5))) : 
+                Math.max(0, Math.min(1, value + (Math.random() * 0.1 - 0.05)))
+            );
+            window.radarChart.update();
+        }
+        
+        if (window.distributionChart) {
+            // 轻微调整分布数据
+            window.distributionChart.data.datasets[0].data = window.distributionChart.data.datasets[0].data.map(value => 
+                Math.max(1, value + Math.floor(Math.random() * 5 - 2))
+            );
+            window.distributionChart.update();
+        }
+        
+        // 小幅度调整热力图数据
+        renderHeatmap('congestion');
+    }
+    
+    // 显示Toast通知
+    function showToast(message, type = 'info') {
+        // 检查是否已存在toast容器
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1080';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // 创建新的toast
+        const toastId = 'toast-' + Date.now();
+        const iconClass = type === 'success' ? 'fa-check-circle' : 
+                          type === 'error' ? 'fa-exclamation-circle' : 
+                          type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+        
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas ${iconClass} me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+        
+        // 初始化并显示toast
+        const toastEl = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+        
+        // 自动移除
+        toastEl.addEventListener('hidden.bs.toast', function () {
+            toastEl.remove();
+        });
+    }
+</script>
 {% endblock %} 
