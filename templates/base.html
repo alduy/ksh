@@ -98,44 +98,31 @@
 <body class="d-flex flex-column min-vh-100">
     <!-- 顶部导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
                 <i class="fas fa-traffic-light me-2"></i>贵阳市交通拥堵监测系统
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav mx-auto">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="/">
+                        <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
                             <i class="fas fa-tachometer-alt me-1"></i>实时监控
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'analysis' %}active{% endif %}" href="/analysis">
-                            <i class="fas fa-chart-line me-1"></i>数据分析
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'district_analysis' %}active{% endif %}" href="/district_analysis">
+                        <a class="nav-link {% if active_page == 'district_analysis' %}active{% endif %}" href="{{ url_for('district_analysis') }}">
                             <i class="fas fa-map-marked-alt me-1"></i>区域分析
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'prediction' %}active{% endif %}" href="/prediction">
-                            <i class="fas fa-chart-bar me-1"></i>拥堵预测
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'about' %}active{% endif %}" href="/about">
-                            <i class="fas fa-info-circle me-1"></i>关于系统
+                        <a class="nav-link {% if active_page == 'analysis' %}active{% endif %}" href="{{ url_for('analysis') }}">
+                            <i class="fas fa-chart-line me-1"></i>数据分析
                         </a>
                     </li>
                 </ul>
-                <div class="ms-auto text-light">
-                    <span id="current-time"></span>
-                </div>
             </div>
         </div>
     </nav>

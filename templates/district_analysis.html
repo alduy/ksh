@@ -11,6 +11,7 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         margin-bottom: 20px;
         border: none;
+        height: 100%;
     }
     
     .district-card:hover {
@@ -106,8 +107,14 @@
     
     .district-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
         gap: 20px;
+    }
+    
+    @media (max-width: 992px) {
+        .district-grid {
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        }
     }
     
     @media (max-width: 768px) {
@@ -183,11 +190,98 @@
         border-radius: 8px;
         overflow: hidden;
     }
+    
+    .status-distribution {
+        margin-top: 10px;
+    }
+    
+    .status-bar {
+        height: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        overflow: hidden;
+        display: flex;
+    }
+    
+    .status-segment {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    .status-segment.severe {
+        background-color: #dc3545;
+    }
+    
+    .status-segment.moderate {
+        background-color: #ffc107;
+    }
+    
+    .status-segment.free {
+        background-color: #28a745;
+    }
+    
+    .status-legend {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        font-size: 0.9em;
+    }
+    
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    
+    .dot.severe {
+        background-color: #dc3545;
+    }
+    
+    .dot.moderate {
+        background-color: #ffc107;
+    }
+    
+    .dot.free {
+        background-color: #28a745;
+    }
+    
+    .prediction-stats {
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .prediction-stats p {
+        margin-bottom: 10px;
+    }
+
+    /* 改善预测图表布局 */
+    .prediction-card {
+        margin-bottom: 25px;
+    }
+
+    .prediction-chart-container {
+        height: 300px;
+    }
+
+    /* 改善卡片布局 */
+    .district-item {
+        margin-bottom: 20px;
+        display: flex;
+        height: 100%;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
+<div class="container-fluid px-4 py-3">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">
             <i class="fas fa-map-marked-alt me-2"></i>区域拥堵分析
@@ -206,7 +300,7 @@
                 <div class="card-body">
                     <h4 class="card-title mb-4">全市拥堵状况概览</h4>
                     <div class="row align-items-center">
-                        <div class="col-md-4 mb-3 mb-md-0">
+                        <div class="col-lg-4 mb-3 mb-lg-0">
                             <div class="d-flex align-items-center">
                                 <div class="congestion-index-large {% if (districts|first).avg_congestion > 0.7 %}text-danger{% elif (districts|first).avg_congestion > 0.4 %}text-warning{% else %}text-success{% endif %}">
                                     {{ (districts|sum(attribute='avg_congestion') / districts|length)|round(2) }}
@@ -217,7 +311,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-lg-8">
                             <div class="row text-center">
                                 <div class="col">
                                     <div class="status-ring bg-success text-white">
@@ -251,87 +345,126 @@
         </div>
     </div>
 
-    <h4 class="mb-3">各区交通状况</h4>
-    
-    <div class="district-grid">
-        {% for district in districts %}
-        <div class="card district-card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">{{ district.name }}</h5>
-                <div>
-                    <span class="district-status {% if district.avg_congestion > 0.7 %}severe{% elif district.avg_congestion > 0.4 %}moderate{% else %}free{% endif %}">
-                        {% if district.avg_congestion > 0.7 %}
-                        严重拥堵
-                        {% elif district.avg_congestion > 0.4 %}
-                        中度拥堵
-                        {% else %}
-                        基本畅通
-                        {% endif %}
-                    </span>
+    <!-- 预测数据展示 -->
+    <div class="card prediction-card">
+        <div class="card-header py-3">
+            <h5 class="mb-0">拥堵预测</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8 mb-3 mb-lg-0">
+                    <div class="prediction-chart-container">
+                        <canvas id="predictionChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="prediction-stats h-100">
+                        <h6 class="mb-3">预测统计</h6>
+                        <div id="predictionStats" class="mt-3"></div>
+                    </div>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <div class="small text-muted">拥堵指数</div>
-                        <div class="h2">{{ district.avg_congestion|round(2) }}</div>
-                        <div class="congestion-status-bar">
-                            <div class="congestion-status-value {% if district.avg_congestion > 0.7 %}bg-danger{% elif district.avg_congestion > 0.4 %}bg-warning{% else %}bg-success{% endif %}" style="width: {{ (district.avg_congestion * 100)|round|int }}%;"></div>
+        </div>
+    </div>
+
+    <h4 class="mb-3 mt-4">各区交通状况</h4>
+    
+    <div class="row">
+        {% for district in districts %}
+        <div class="col-lg-6 district-item">
+            <div class="card district-card w-100">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ district.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">平均拥堵指数: <span class="badge bg-{{ 'danger' if district.avg_congestion >= 0.6 else 'warning' if district.avg_congestion >= 0.3 else 'success' }}">{{ "%.2f"|format(district.avg_congestion) }}</span></p>
+                            <p class="mb-2">平均速度: {{ "%.1f"|format(district.avg_speed) }} km/h</p>
+                            <p class="mb-2">道路数量: {{ district.road_count }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="status-distribution">
+                                <div class="status-bar">
+                                    <div class="status-segment severe" style="width: {{ district.status_percent.severe }}%"></div>
+                                    <div class="status-segment moderate" style="width: {{ district.status_percent.moderate }}%"></div>
+                                    <div class="status-segment free" style="width: {{ district.status_percent.free }}%"></div>
+                                </div>
+                                <div class="status-legend">
+                                    <span class="legend-item"><span class="dot severe"></span>严重拥堵 {{ district.status_percent.severe }}%</span>
+                                    <span class="legend-item"><span class="dot moderate"></span>中度拥堵 {{ district.status_percent.moderate }}%</span>
+                                    <span class="legend-item"><span class="dot free"></span>畅通 {{ district.status_percent.free }}%</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="small text-muted">平均车速</div>
-                        <div class="h2">{{ district.avg_speed|round(1) }} <small>km/h</small></div>
+                    <div class="text-end mt-3">
+                        <a href="{{ url_for('district_detail', district_name=district.name) }}" class="btn btn-primary btn-sm">查看详情</a>
                     </div>
-                </div>
-                
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <div class="small text-muted">道路状态分布</div>
-                    </div>
-                    <div>
-                        <span class="status-badge bg-success">畅通 {{ district.status_percent.get('畅通', 0) }}%</span>
-                        <span class="status-badge bg-warning">轻度 {{ district.status_percent.get('轻度拥堵', 0) }}%</span>
-                        <span class="status-badge bg-danger">严重 {{ district.status_percent.get('严重拥堵', 0) }}%</span>
-                    </div>
-                </div>
-                
-                <div class="road-count-detail">
-                    <span class="badge bg-primary rounded-pill">{{ district.road_count }} 条道路</span>
-                    <span class="badge bg-success rounded-pill">{{ district.free_count }} 畅通</span>
-                    <span class="badge bg-warning rounded-pill">{{ district.moderate_count }} 中度拥堵</span>
-                    <span class="badge bg-danger rounded-pill">{{ district.severe_count }} 严重拥堵</span>
-                </div>
-                
-                <div class="text-end mt-3">
-                    <a href="{{ url_for('district_detail', district_name=district.name) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-chart-bar me-1"></i>详细分析
-                    </a>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 进入页面时的动画效果
-        const districtCards = document.querySelectorAll('.district-card');
-        
-        districtCards.forEach((card, index) => {
-            setTimeout(() => {
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, 100 * index);
-        });
-        
-        // 定时刷新数据（每60秒）
-        setInterval(function() {
-            location.reload();
-        }, 60000);
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化预测图表
+    const ctx = document.getElementById('predictionChart').getContext('2d');
+    const predictionData = {{ predictions|tojson }};
+    
+    const labels = predictionData.map(p => p.timestamp);
+    const congestionData = predictionData.map(p => p.avg_congestion);
+    const congestedCountData = predictionData.map(p => p.congested_count);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '平均拥堵指数',
+                data: congestionData,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }, {
+                label: '拥堵道路数量',
+                data: congestedCountData,
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
     });
+    
+    // 更新预测统计
+    const statsContainer = document.getElementById('predictionStats');
+    if (predictionData.length > 0) {
+        const latestPrediction = predictionData[predictionData.length - 1];
+        statsContainer.innerHTML = `
+            <div class="alert alert-info mb-3">
+                <p><strong>最新预测时间:</strong> ${latestPrediction.timestamp}</p>
+                <p><strong>预测拥堵指数:</strong> ${latestPrediction.avg_congestion.toFixed(2)}</p>
+                <p><strong>预测拥堵道路数:</strong> ${latestPrediction.congested_count}</p>
+                <p class="mb-0"><i class="fas fa-info-circle me-1"></i> 预测基于历史数据和当前交通状况</p>
+            </div>
+        `;
+    } else {
+        statsContainer.innerHTML = `
+            <div class="alert alert-warning">
+                <p class="mb-0"><i class="fas fa-exclamation-triangle me-1"></i> 暂无预测数据</p>
+            </div>
+        `;
+    }
+});
 </script>
 {% endblock %} 

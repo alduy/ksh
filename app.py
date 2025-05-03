@@ -187,10 +187,33 @@ def district_analysis():
     # 按拥堵程度排序
     district_overviews.sort(key=lambda x: x['avg_congestion'], reverse=True)
     
+    # 获取拥堵预测数据
+    future_predictions = []
+    if predictor.is_trained and not current_traffic_data.empty:
+        try:
+            # 添加缺失的预测数据生成
+            prediction_df = predictor.predict_future(current_traffic_data, hours_ahead=3)
+            
+            # 修复缩进问题（原123行附近）
+            grouped = prediction_df.groupby(pd.Grouper(key='timestamp', freq='H'))
+            
+            for group_time, group_data in grouped:  # 确保正确缩进
+                hour_data = {
+                    'timestamp': group_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'avg_congestion': group_data['congestion_index'].mean(),
+                    'congested_count': group_data.loc[group_data['congestion_index'] >= 0.6].shape[0],
+                    'status_counts': group_data['status'].value_counts(dropna=False).to_dict()
+                }
+                future_predictions.append(hour_data)
+                
+        except Exception as e:
+            print(f"预测数据生成失败: {e}")
+    
     return render_template(
         'district_analysis.html',
         active_page='district_analysis',
         districts=district_overviews,
+        predictions=future_predictions,
         current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     )
 
@@ -533,28 +556,27 @@ def update_traffic_data():
                         ignore_index=True
                     )
                     current_traffic_data = df
-        last_update_time = datetime.now()
-        
+                    last_update_time = datetime.now()
+                    
                     # 准备前端所需的各种数据
                     try:
-        update_data = {
-            'timestamp': last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        update_data = {
+                            'timestamp': last_update_time.strftime('%Y-%m-%d %H:%M:%S'),
                             'map_data': json.loads(data_processor.prepare_map_data(current_traffic_data)),
                             'congestion_list': json.loads(data_processor.prepare_congestion_list(current_traffic_data)),
                             'alerts': json.loads(data_processor.prepare_alert_data(current_traffic_data)),
                             'stats': json.loads(data_processor.prepare_statistics(current_traffic_data))
-        }
-        
-        socketio.emit('traffic_update', update_data)
-        print(f"数据已更新: {last_update_time}")
+                        }
+                        
+                        socketio.emit('traffic_update', update_data)
+                        print(f"数据已更新: {last_update_time}")
                     except Exception as e:
                         print(f"数据处理或发送错误: {e}")
-        
-    except Exception as e:
+        except Exception as e:
             print(f"数据更新主循环错误: {e}")
-    
+        
         # 使用time.sleep而不是socketio.sleep，因为这个函数在单独的线程中运行
-    time.sleep(config.SIMULATION_INTERVAL)
+        time.sleep(config.SIMULATION_INTERVAL)
 
 @app.route('/about')
 def about():
