@@ -440,6 +440,132 @@
         transform: translateY(-2px);
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     }
+    
+    .road-list {
+        scrollbar-width: thin;
+        scrollbar-color: #6c757d #f8f9fa;
+    }
+    
+    .road-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .road-list::-webkit-scrollbar-track {
+        background: #f8f9fa;
+    }
+    
+    .road-list::-webkit-scrollbar-thumb {
+        background-color: #6c757d;
+        border-radius: 3px;
+    }
+    
+    .list-group-item {
+        border-left: 4px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .list-group-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .list-group-item.active {
+        background-color: #e9ecef;
+        border-color: #dee2e6;
+    }
+    
+    .list-group-item.severe {
+        border-left-color: #dc3545;
+    }
+    
+    .list-group-item.moderate {
+        border-left-color: #ffc107;
+    }
+    
+    .list-group-item.smooth {
+        border-left-color: #28a745;
+    }
+    
+    /* 路段列表容器 */
+    .road-segments-container {
+        height: calc(100vh - 265px);
+        min-height: 500px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0,0,0,0.2) transparent;
+    }
+    
+    .road-segments-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .road-segments-container::-webkit-scrollbar-track {
+        background: #f8f9fa;
+    }
+    
+    .road-segments-container::-webkit-scrollbar-thumb {
+        background-color: #6c757d;
+        border-radius: 3px;
+    }
+    
+    /* 路段列表项 */
+    .road-segment-item {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .road-segment-item:hover {
+        background-color: rgba(55, 114, 255, 0.05);
+        transform: translateY(-2px);
+    }
+    
+    .road-segment-item.active {
+        background-color: rgba(55, 114, 255, 0.1);
+        border-left: 4px solid #3772ff;
+    }
+    
+    /* 路段进度条 */
+    .road-progress {
+        height: 6px;
+        background-color: #f0f0f0;
+        border-radius: 3px;
+        margin-top: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .road-progress-bar {
+        height: 100%;
+        border-radius: 3px;
+    }
+    
+    /* 地图标记增强 */
+    .map-marker {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .map-marker:hover {
+        transform: scale(1.2);
+        z-index: 1000 !important;
+    }
+    
+    .map-marker.severe {
+        background-color: #dc3545;
+    }
+    
+    .map-marker.moderate {
+        background-color: #ffc107;
+    }
+    
+    .map-marker.normal {
+        background-color: #28a745;
+    }
 </style>
 {% endblock %}
 
@@ -450,22 +576,32 @@
         <small class="text-muted fs-6 ms-2">数据更新时间: <span id="update-time" class="badge bg-light text-dark">{{ current_time }}</span></small>
 </h2>
 
-    <div class="row stats-row">
+<div class="row stats-row">
     <!-- 交通状态统计卡片 -->
     <div class="col-md-3">
-            <div class="card stat-card congestion">
-                <div class="card-body py-2">
+        <div class="card card-dashboard stat-card congestion mb-0">
+            <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                            <h6 class="card-title text-muted mb-0 small">平均拥堵指数</h6>
-                            <h3 id="avg-congestion" class="mt-2 mb-0 display-6">{{ avg_congestion }}</h3>
+                        <div class="text-muted">拥堵指数</div>
+                        <h2 class="mb-0">{{ avg_congestion }}</h2>
                     </div>
-                        <div class="bg-light p-3 rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                        <i class="fas fa-traffic-light fa-2x text-danger"></i>
+                    <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <i class="fas fa-traffic-light fa-lg text-danger"></i>
                     </div>
                 </div>
-                    <div class="progress mt-2">
-                        <div id="congestion-progress" class="progress-bar bg-danger" role="progressbar" style="width: 0; transition: width 1.5s ease-in-out;"></div>
+                <div class="progress mt-3">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ avg_congestion * 100 }}%" aria-valuenow="{{ avg_congestion * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="small mt-1">
+                    <span class="fw-bold">状态:</span>
+                    {% if avg_congestion > 0.7 %}
+                        <span class="text-danger fw-bold">严重拥堵</span>
+                    {% elif avg_congestion > 0.4 %}
+                        <span class="text-warning fw-bold">中度拥堵</span>
+                    {% else %}
+                        <span class="text-success fw-bold">畅通</span>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -524,99 +660,143 @@
 </div>
 
 <div class="row">
-    <!-- 地图区域 -->
-        <div class="col-lg-8 px-1">
-            <div class="card card-dashboard h-100 mb-0">
-                <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h5 class="card-title mb-0">
-                        <i class="fas fa-map-marked-alt me-2 text-primary"></i>交通拥堵实时地图
-                </h5>
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-primary py-1 px-2" id="refresh-map">
-                            <i class="fas fa-sync-alt me-1"></i>刷新
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary py-1 px-2" id="reset-view">
-                            <i class="fas fa-expand me-1"></i>重置视图
-                        </button>
-            </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">实时交通状况</h5>
+                <div>
+                    <button id="refresh-map" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-sync-alt"></i> 刷新地图
+                    </button>
                 </div>
-                <div class="card-body p-0">
-                    <div id="map" class="border-0"></div>
-                    <div id="map-loader" class="position-absolute top-50 start-50 translate-middle d-none">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">加载中...</span>
+            </div>
+            <div class="card-body">
+                <div id="map" style="height: 500px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">路段列表</h5>
+                <div>
+                    <select id="road-filter" class="form-select form-select-sm">
+                        <option value="all">全部路段</option>
+                        <option value="congested">拥堵路段</option>
+                        <option value="smooth">畅通路段</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="road-segments-container" id="road-segments-list">
+                        <!-- 路段列表将通过JavaScript动态生成 -->
+                    <div class="p-3 text-center text-muted">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
+                        加载路段数据中...
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 拥堵列表和警报区域 -->
+    <div class="col-lg-4 px-1 d-flex flex-column">
+    <!-- 拥堵路段列表 -->
+        <div class="card card-dashboard flex-grow-1">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <h5 class="card-title mb-0">
+                    <i class="fas fa-list-alt me-2 text-primary"></i>拥堵路段实时列表
+            </h5>
+                <span class="badge bg-danger rounded-pill">TOP 10</span>
+        </div>
+        <div class="card-body p-0">
+                <div class="congestion-table">
+            <table class="table table-hover mb-0">
+                        <thead class="table-light sticky-top" style="position: sticky; top: 0; z-index: 100;">
+                            <tr>
+                                <th class="ps-2">路段名称</th>
+                                <th style="width: 22%">拥堵指数</th>
+                                <th class="pe-2" style="width: 30%">状态</th>
+                    </tr>
+                </thead>
+                <tbody id="congestion-list">
+                    {% for road in congested_roads %}
+                            <tr class="road-row" data-road-name="{{ road.road_name }}">
+                                <td class="ps-2 text-truncate" style="max-width: 160px;" title="{{ road.road_name }}">{{ road.road_name }}</td>
+                                <td><strong>{{ road.congestion_index }}</strong></td>
+                                <td class="pe-2">
+                                    <span class="status-badge {% if road.status == '畅通' %}status-normal{% elif road.status == '轻度拥堵' %}status-light{% elif road.status == '中度拥堵' %}status-moderate{% else %}status-heavy{% endif %}">
+                                {{ road.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+                </div>
+        </div>
+    </div>
+    
+    <!-- 未来交通预测卡片 -->
+    <div class="card card-dashboard flex-grow-1">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-chart-line me-2 text-primary"></i>未来交通预测
+            </h5>
+            <a href="/prediction" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-external-link-alt"></i> 详情
+            </a>
+        </div>
+        <div class="card-body">
+            <div id="prediction-card-content">
+                <div class="text-center py-3" id="prediction-loading">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mb-0">数据加载中...</p>
+                    <small class="text-muted">正在从服务器获取预测数据</small>
+                </div>
+                <div id="prediction-results" class="d-none">
+                    <!-- 预测结果将由JavaScript动态加载 -->
+                </div>
+            </div>
+            <div class="text-center mt-2">
+                <a href="/prediction" class="btn btn-primary">查看详细预测</a>
             </div>
         </div>
     </div>
     
-    <!-- 拥堵列表和警报区域 -->
-        <div class="col-lg-4 px-1 d-flex flex-column">
-        <!-- 拥堵路段列表 -->
-            <div class="card card-dashboard flex-grow-1">
-                <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h5 class="card-title mb-0">
-                        <i class="fas fa-list-alt me-2 text-primary"></i>拥堵路段实时列表
-                </h5>
-                    <span class="badge bg-danger rounded-pill">TOP 10</span>
-            </div>
-            <div class="card-body p-0">
-                    <div class="congestion-table">
-                <table class="table table-hover mb-0">
-                            <thead class="table-light sticky-top" style="position: sticky; top: 0; z-index: 100;">
-                                <tr>
-                                    <th class="ps-2">路段名称</th>
-                                    <th style="width: 22%">拥堵指数</th>
-                                    <th class="pe-2" style="width: 30%">状态</th>
-                        </tr>
-                    </thead>
-                    <tbody id="congestion-list">
-                        {% for road in congested_roads %}
-                                <tr class="road-row" data-road-name="{{ road.road_name }}">
-                                    <td class="ps-2 text-truncate" style="max-width: 160px;" title="{{ road.road_name }}">{{ road.road_name }}</td>
-                                    <td><strong>{{ road.congestion_index }}</strong></td>
-                                    <td class="pe-2">
-                                        <span class="status-badge {% if road.status == '畅通' %}status-normal{% elif road.status == '轻度拥堵' %}status-light{% elif road.status == '中度拥堵' %}status-moderate{% else %}status-heavy{% endif %}">
-                                    {{ road.status }}
-                                </span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                    </div>
-            </div>
+    <!-- 实时警报 -->
+        <div class="card card-dashboard flex-grow-1">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <h5 class="card-title mb-0">
+                    <i class="fas fa-bell me-2 text-primary"></i>实时交通警报
+            </h5>
+                <span class="badge bg-primary rounded-pill" id="alert-count">{{ alerts|length }}</span>
         </div>
-        
-        <!-- 实时警报 -->
-            <div class="card card-dashboard flex-grow-1">
-                <div class="card-header d-flex justify-content-between align-items-center py-2">
-                <h5 class="card-title mb-0">
-                        <i class="fas fa-bell me-2 text-primary"></i>实时交通警报
-                </h5>
-                    <span class="badge bg-primary rounded-pill" id="alert-count">{{ alerts|length }}</span>
-            </div>
-                <div class="card-body p-2 alert-panel" id="alert-container">
-                {% if alerts %}
-                    {% for alert in alerts %}
-                        <div class="alert alert-{{ alert.level }} d-flex align-items-center shadow-sm border-start border-4 border-{{ alert.level }} py-2 px-3">
-                        <i class="fas fa-exclamation-circle me-2"></i>
-                        <div>
-                            {{ alert.message }}
-                                <small class="d-block text-muted mt-1"><i class="far fa-clock me-1"></i>{{ alert.timestamp }}</small>
-                        </div>
+            <div class="card-body p-2 alert-panel" id="alert-container">
+            {% if alerts %}
+                {% for alert in alerts %}
+                    <div class="alert alert-{{ alert.level }} d-flex align-items-center shadow-sm border-start border-4 border-{{ alert.level }} py-2 px-3">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <div>
+                        {{ alert.message }}
+                            <small class="d-block text-muted mt-1"><i class="far fa-clock me-1"></i>{{ alert.timestamp }}</small>
                     </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center text-muted py-4">
-                            <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-75"></i>
-                        <p>当前没有严重拥堵警报</p>
-                    </div>
-                {% endif %}
-            </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-75"></i>
+                    <p>当前没有严重拥堵警报</p>
+                </div>
+            {% endif %}
         </div>
     </div>
+</div>
 </div>
 
 <!-- 历史趋势图 -->
@@ -648,1079 +828,820 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
 <script>
-    // 将所有Jinja模板变量在脚本开头预先定义为JavaScript变量
-    // 地图配置
-    var centerLat = {{ center_lat }};
-    var centerLng = {{ center_lng }};
-    var defaultZoom = {{ zoom }};
-    var markerSize = {{ config.MAP_STYLE.marker_size }};
-    var tileUrl = '{{ config.MAP_STYLE.tile_url }}';
-    var tileUrlBackup = '{{ config.MAP_STYLE.tile_url_backup }}';
-    var tileAttribution = '{{ config.MAP_STYLE.attribution }}';
-    
-    // 数据
-    var initialMapData = {{ map_data|safe }};
-    var initialTrendData = {{ trend_data|safe }};
-    
-    // 统计数据初始值
-    var initialCongestion = {{ avg_congestion }};
-    var initialSpeed = {{ avg_speed }};
-    
-    // 声明markersLayer变量
-    var markersLayer = null;
-    
-    // 在全局作用域添加标记引用的集合，方便后续查找
-    var markerReferences = {};
-    
-    // UI 状态
-    var isMapLoading = false;
-    var isDataUpdating = false;
-    
-    // 设置加载状态
-    function setLoading(loading) {
-        isDataUpdating = loading;
-        if (loading) {
-            document.getElementById('map-loader').classList.remove('d-none');
-        } else {
-            document.getElementById('map-loader').classList.add('d-none');
-        }
-    }
-    
-    // 页面加载完成后设置初始值
     document.addEventListener('DOMContentLoaded', function() {
-        // 设置拥堵指数进度条初始值
-        document.getElementById('congestion-progress').style.width = (initialCongestion * 100) + '%';
-        // 设置速度进度条初始值
-        document.getElementById('speed-progress').style.width = (initialSpeed / 60 * 100) + '%';
+        // 地图初始化
+        const mapData = {{ map_data|safe }};
+        const centerLat = {{ center_lat }};
+        const centerLng = {{ center_lng }};
+        const zoomLevel = {{ zoom }};
         
-        // 为按钮添加事件监听器
-        document.getElementById('refresh-map').addEventListener('click', function() {
-            socket.emit('get_traffic_data');
-            showToast('正在刷新数据...', 'info');
+        // 打印调试信息，检查关键数据
+        console.log('初始化地图，中心点:', centerLat, centerLng, '缩放级别:', zoomLevel);
+        
+        // 创建地图实例
+        const map = L.map('map', {
+            center: [centerLat, centerLng],
+            zoom: zoomLevel,
+            zoomControl: true,
+            attributionControl: true
         });
         
-        document.getElementById('reset-view').addEventListener('click', function() {
-            map.setView([centerLat, centerLng], defaultZoom, {
-                animate: true,
-                duration: 1
-            });
-            showToast('已重置地图视图', 'success');
-        });
+        // 添加地图图层
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
         
-        // 为时间范围按钮添加事件
-        document.querySelectorAll('[data-period]').forEach(button => {
-            button.addEventListener('click', function() {
-                document.querySelectorAll('[data-period]').forEach(btn => btn.classList.remove('active'));
-                this.classList.add('active');
-                const period = this.getAttribute('data-period');
-                socket.emit('get_trend_data', { period: period });
-                showToast(`正在加载${this.textContent}数据...`, 'info');
-            });
-        });
-    });
-    
-    // 创建地图
-    const map = L.map('map', {
-        zoomControl: false,
-        attributionControl: false
-    }).setView([centerLat, centerLng], defaultZoom);
-    
-    // 添加缩放控件到右上角
-    L.control.zoom({
-        position: 'topright'
-    }).addTo(map);
-    
-    // 添加署名控件到右下角
-    L.control.attribution({
-        position: 'bottomright',
-        prefix: '&copy; <a href="https://amap.com/">高德地图</a> | 贵阳市交通拥堵监测系统'
-    }).addTo(map);
-
-    // 使用高德地图（中文）- 高清版本
-    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=2&style=8&x={x}&y={y}&z={z}', {
-        subdomains: "1234",
-        attribution: '&copy; <a href="https://amap.com/">高德地图</a>'
-    }).addTo(map);
-
-    // 定义自定义图标
-    const greenIcon = L.icon({
-        iconUrl: '/static/images/marker-icon-2x-green.png',
-        shadowUrl: '/static/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-    });
-
-    const orangeIcon = L.icon({
-        iconUrl: '/static/images/marker-icon-2x-orange.png',
-        shadowUrl: '/static/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-    });
-
-    const redIcon = L.icon({
-        iconUrl: '/static/images/marker-icon-2x-red.png',
-        shadowUrl: '/static/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-    });
-
-    function getMarkerIcon(congestionIndex) {
-        // 确保congestionIndex是数字
-        if (typeof congestionIndex !== 'number') {
-            if (typeof congestionIndex === 'string') {
-                congestionIndex = parseFloat(congestionIndex);
-            } else {
-                congestionIndex = 0.3; // 默认值
-            }
-        }
+        // 地图标记集合
+        const markers = [];
         
-        if (congestionIndex < 0.4) {
-            return greenIcon;
-        } else if (congestionIndex < 0.7) {
-            return orangeIcon;
-        } else {
-            return redIcon;
-        }
-    }
-
-    // 获取路段详情URL
-    function getRoadDetailUrl(roadId) {
-        return `/road/${roadId}`;
-    }
-
-    // 更新地图标记
-    function updateMapMarkers(data) {
+        // 拥堵路段数据
+        let congestedRoads = [];
         try {
-            console.log('更新地图标记...', data && data.length ? data.length : 0);
-            setLoading(true);
+            // 从服务器获取的数据可能是JSON字符串或已经解析的对象
+            const rawData = {{ congested_roads|safe }};
             
-            // 清除现有标记和引用
-            if (markersLayer) {
-                markersLayer.clearLayers();
+            // 检查数据类型并适当处理
+            if (typeof rawData === 'string') {
+                try {
+                    congestedRoads = JSON.parse(rawData);
+                    console.log('成功解析拥堵路段JSON字符串，数量:', congestedRoads.length);
+                } catch (parseError) {
+                    console.error('解析拥堵路段JSON字符串失败:', parseError);
+                    congestedRoads = [];
+                }
+            } else if (Array.isArray(rawData)) {
+                // 已经是数组，直接使用
+                congestedRoads = rawData;
+                console.log('成功获取拥堵路段数组，数量:', congestedRoads.length);
+            } else if (rawData && typeof rawData === 'object') {
+                // 如果是对象但不是数组，则尝试转换为数组
+                congestedRoads = [rawData];
+                console.log('获取到单个拥堵路段对象，已转换为数组');
             } else {
-                markersLayer = L.layerGroup().addTo(map);
-            }
-            markerReferences = {};
-            
-            // 检查数据格式
-            if (!data) {
-                console.error('无效的地图数据: undefined or null');
-                setLoading(false);
-                showToast('地图数据无效', 'error');
-                return;
+                console.warn('拥堵路段数据格式不正确:', typeof rawData);
+                congestedRoads = [];
             }
             
-            // 处理GeoJSON格式
-            if (data.type && data.type === 'FeatureCollection' && data.features) {
-                console.log('处理GeoJSON数据，包含', data.features.length, '个标记');
+            // 数据验证 - 确保每个路段对象包含必要的字段
+            if (congestedRoads.length > 0) {
+                congestedRoads = congestedRoads.map(road => {
+                    // 添加默认值避免空值出错
+                    return {
+                        id: road.id || road.road_id || road.segment_id || `road_${Math.random().toString(36).substr(2, 9)}`,
+                        road_id: road.road_id || road.id || road.segment_id || '',
+                        road_name: road.road_name || '未命名路段',
+                        congestion_index: parseFloat(road.congestion_index) || 0,
+                        status: road.status || '未知',
+                        district: road.district || '未知区域',
+                        average_speed: parseFloat(road.average_speed) || 0,
+                        latitude: parseFloat(road.latitude) || 0,
+                        longitude: parseFloat(road.longitude) || 0
+                    };
+                });
+                console.log('路段数据处理完成，示例:', congestedRoads[0]);
+            }
+        } catch (e) {
+            console.error('加载拥堵路段数据失败:', e);
+            congestedRoads = [];
+        }
+        
+        // 解析并添加地图标记
+        function addMapMarkers() {
+            try {
+                // 清除现有标记
+                markers.forEach(marker => map.removeLayer(marker));
+                markers.length = 0;
                 
-                if (!Array.isArray(data.features) || data.features.length === 0) {
-                    console.warn('GeoJSON格式但特征集为空');
-                    setLoading(false);
+                // 定义图标 - 添加错误处理，防止图标文件不存在
+                const iconUrls = {
+                    normal: '/static/images/marker-icon-2x-green.png',
+                    moderate: '/static/images/marker-icon-2x-orange.png',
+                    severe: '/static/images/marker-icon-2x-red.png'
+                };
+                
+                // 创建图标对象，添加错误处理
+                const icons = {
+                    normal: createIcon('normal', '#28a745'),
+                    moderate: createIcon('moderate', '#ffc107'),
+                    severe: createIcon('severe', '#dc3545')
+                };
+                
+                // 创建图标的辅助函数
+                function createIcon(type, fallbackColor) {
+                    // 尝试创建基于图片的图标
+                    try {
+                        return L.icon({
+                            iconUrl: iconUrls[type],
+        shadowUrl: '/static/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+                    } catch (e) {
+                        console.warn(`无法加载图标 ${iconUrls[type]}，使用备用图标`, e);
+                        // 如果加载失败，创建一个div图标作为备用
+                        return L.divIcon({
+                            className: 'map-marker',
+                            html: `<div style="background-color: ${fallbackColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10],
+                            popupAnchor: [0, -10]
+                        });
+                    }
+                }
+
+                // 解析地图数据并添加标记
+                let parsedData;
+                
+                try {
+                    // 尝试解析JSON字符串
+                    if (typeof mapData === 'string') {
+                        parsedData = JSON.parse(mapData);
+        } else {
+                        // 如果已经是对象，直接使用
+                        parsedData = mapData;
+                    }
+                } catch (parseError) {
+                    console.error('解析地图数据失败:', parseError);
+                    // 如果解析失败，尝试直接使用原始数据
+                    parsedData = mapData;
+                }
+                
+                // 检查数据格式
+                if (!parsedData) {
+                    console.error('无效的地图数据', mapData);
                     return;
                 }
                 
-                data.features.forEach(feature => {
-                    try {
-                        if (!feature || !feature.geometry || !feature.geometry.coordinates) {
-                            console.warn('无效的特征数据', feature);
-                            return; // 跳过此特征
-                        }
-                        
-                        const coords = feature.geometry.coordinates;
-                        if (!Array.isArray(coords) || coords.length < 2) {
-                            console.warn('无效的坐标数据', coords);
-                            return; // 跳过此坐标
-                        }
-                        
-                        const props = feature.properties || {};
-                        const roadId = props.id;
-                        const roadName = props.road_name || '未命名路段';
-                        
-                        // 确保坐标有效
-                        const lat = parseFloat(coords[1]);
-                        const lng = parseFloat(coords[0]);
-                        
-                        if (isNaN(lat) || isNaN(lng)) {
-                            console.warn('无效的坐标值', coords);
-                            return; // 跳过无效坐标
-                        }
-                        
-                        // 创建标记
-                        const marker = L.marker([lat, lng], {
-                            icon: getMarkerIcon(props.congestion_index || 0.3)
-                        }).addTo(markersLayer);
-                        
-                        // 保存标记引用
-                        if (roadId) {
-                            markerReferences[roadId] = marker;
-                        }
-                        // 以路段名称为键也保存一份引用
-                        if (roadName) {
-                            markerReferences[roadName] = marker;
-                        }
-                        
-                        // 弹出窗口内容 - 标记为clickable
-                        if (props.popupContent) {
-                            marker.bindPopup(props.popupContent);
-                        }
-                        
-                        // 点击标记时直接跳转到详情页
-                        marker.on('click', function(e) {
-                            // 高亮对应的表格行
-                            const roadId = road.id || road.segment_id;
-                            const roadName = road.road_name;
-                            
-                            // 移除所有已有的高亮样式
-                            document.querySelectorAll('.road-row-active').forEach(el => {
-                                el.classList.remove('road-row-active');
-                            });
-                            
-                            // 查找并高亮对应的行
-                            document.querySelectorAll('.road-row').forEach(row => {
-                                const rowId = row.getAttribute('data-road-id');
-                                const rowName = row.getAttribute('data-road-name');
-                                
-                                if ((roadId && rowId === roadId.toString()) || (roadName && rowName === roadName)) {
-                                    // 高亮该行
-                                    row.classList.add('road-row-active');
-                                    
-                                    // 滚动到该行
-                                    const tableBody = row.closest('tbody');
-                                    if (tableBody) {
-                                        const rowTop = row.offsetTop;
-                                        const tableHeight = tableBody.clientHeight;
-                                        const isRowVisible = (rowTop >= tableBody.scrollTop) && 
-                                                           (rowTop <= tableBody.scrollTop + tableHeight - row.clientHeight);
-                                        
-                                        if (!isRowVisible) {
-                                            // 平滑滚动到该行
-                                            tableBody.scrollTo({
-                                                top: rowTop - tableHeight / 2,
-                                                behavior: 'smooth'
-                                            });
-                                        }
-                                    }
-                                }
-                            });
-                            
-                            // 处理弹窗或跳转
-                            if (roadId) {
-                                // 打开弹窗
-                                marker.openPopup();
-                                
-                                // 在Shift键按下的情况下直接跳转，否则显示弹窗
-                                if (e.originalEvent && (e.originalEvent.shiftKey || e.originalEvent.metaKey)) {
-                                    window.location.href = getRoadDetailUrl(roadId);
-                                } else {
-                                    // 显示提示
-                                    setTimeout(() => {
-                                        showToast(`<span>按住Shift键点击可直接查看<a href="${getRoadDetailUrl(roadId)}" class="text-white ms-1 text-decoration-underline">路段详情</a></span>`, 'info');
-                                    }, 1000);
-                                }
-                            } else {
-                                // 如果没有ID，则只显示弹出窗口
-                                marker.openPopup();
-                            }
-                            
-                            // 防止事件冒泡
-                            L.DomEvent.stopPropagation(e);
-                        });
-                    } catch (featureError) {
-                        console.error('处理特征时出错:', featureError);
-                    }
-                });
-            } 
-            // 处理简单数组格式
-            else if (Array.isArray(data)) {
-                console.log('处理数组数据，包含', data.length, '个标记');
-                
-                if (data.length === 0) {
-                    console.warn('数组格式但为空');
-                    setLoading(false);
-                    return;
-                }
-                
-                data.forEach(road => {
-                    try {
-                        if (!road) {
-                            console.warn('无效的路段数据: null or undefined');
-                            return; // 跳过此路段
-                        }
-                        
-                        // 确保坐标有效
-                        const lat = parseFloat(road.latitude);
-                        const lng = parseFloat(road.longitude);
-                        
-                        if (isNaN(lat) || isNaN(lng)) {
-                            console.warn('无效的路段坐标', road);
-                            return; // 跳过无效坐标
-                        }
-                        
-                        // 创建标记
-                        const marker = L.marker([lat, lng], {
-                            icon: getMarkerIcon(parseFloat(road.congestion_index) || 0.3)
-                        }).addTo(markersLayer);
-                        
-                        const roadId = road.id || road.segment_id;
-                        const roadName = road.road_name || '未命名路段';
-                        
-                        // 保存标记引用
-                        if (roadId) {
-                            markerReferences[roadId] = marker;
-                        }
-                        // 以路段名称为键也保存一份引用
-                        if (roadName) {
-                            markerReferences[roadName] = marker;
-                        }
-                        
-                        // 安全处理数值
-                        const congestionIndex = parseFloat(road.congestion_index) || 0.3;
-                        const avgSpeed = parseFloat(road.average_speed) || 40;
-                        const district = road.district || '未知区域';
-                        const status = road.status || '未知状态';
-                        
-                        // 弹出窗口内容
-                        const popupContent = `
-                            <div class="road-popup">
-                                <h5>${roadName}</h5>
-                                <p><i class="fas fa-map-marker-alt me-2"></i>区域: ${district}</p>
-                                <p><i class="fas fa-traffic-light me-2"></i>拥堵指数: <strong>${congestionIndex.toFixed(2)}</strong></p>
-                                <p><i class="fas fa-info-circle me-2"></i>状态: <span class="status-badge ${status === '畅通' ? 'status-normal' : status === '轻度拥堵' ? 'status-light' : status === '中度拥堵' ? 'status-moderate' : 'status-heavy'}">${status}</span></p>
-                                <p><i class="fas fa-tachometer-alt me-2"></i>平均车速: <strong>${avgSpeed}</strong> km/h</p>
-                                ${roadId ? `<a href="${getRoadDetailUrl(roadId)}" class="btn btn-sm btn-primary mt-2 w-100">查看详情</a>` : ''}
-                            </div>
-                        `;
-                        
-                        marker.bindPopup(popupContent);
-                        
-                        // 点击标记时直接跳转到详情页
-                        marker.on('click', function(e) {
-                            // 高亮对应的表格行
-                            const roadId = road.id || road.segment_id;
-                            const roadName = road.road_name;
-                            
-                            // 移除所有已有的高亮样式
-                            document.querySelectorAll('.road-row-active').forEach(el => {
-                                el.classList.remove('road-row-active');
-                            });
-                            
-                            // 查找并高亮对应的行
-                            document.querySelectorAll('.road-row').forEach(row => {
-                                const rowId = row.getAttribute('data-road-id');
-                                const rowName = row.getAttribute('data-road-name');
-                                
-                                if ((roadId && rowId === roadId.toString()) || (roadName && rowName === roadName)) {
-                                    // 高亮该行
-                                    row.classList.add('road-row-active');
-                                    
-                                    // 滚动到该行
-                                    const tableBody = row.closest('tbody');
-                                    if (tableBody) {
-                                        const rowTop = row.offsetTop;
-                                        const tableHeight = tableBody.clientHeight;
-                                        const isRowVisible = (rowTop >= tableBody.scrollTop) && 
-                                                           (rowTop <= tableBody.scrollTop + tableHeight - row.clientHeight);
-                                        
-                                        if (!isRowVisible) {
-                                            // 平滑滚动到该行
-                                            tableBody.scrollTo({
-                                                top: rowTop - tableHeight / 2,
-                                                behavior: 'smooth'
-                                            });
-                                        }
-                                    }
-                                }
-                            });
-                            
-                            // 处理弹窗或跳转
-                            if (roadId) {
-                                // 打开弹窗
-                                marker.openPopup();
-                                
-                                // 在Shift键按下的情况下直接跳转，否则显示弹窗
-                                if (e.originalEvent && (e.originalEvent.shiftKey || e.originalEvent.metaKey)) {
-                                    window.location.href = getRoadDetailUrl(roadId);
-            } else {
-                                    // 显示提示
-                                    setTimeout(() => {
-                                        showToast(`<span>按住Shift键点击可直接查看<a href="${getRoadDetailUrl(roadId)}" class="text-white ms-1 text-decoration-underline">路段详情</a></span>`, 'info');
-                                    }, 1000);
-                                }
-                            } else {
-                                // 如果没有ID，则只显示弹出窗口
-                                marker.openPopup();
-                            }
-                            
-                            // 防止事件冒泡
-                            L.DomEvent.stopPropagation(e);
-                        });
-                    } catch (roadError) {
-                        console.error('处理路段时出错:', roadError);
-                    }
-                });
-            } else {
-                console.error('不支持的数据格式:', data);
-                showToast('数据格式无效', 'error');
-            }
-            
-            setTimeout(() => {
-                setLoading(false);
-                showToast(`地图数据已更新: ${data.length || 0} 个路段`, 'success');
-            }, 500);
-        } catch (error) {
-            console.error('更新地图标记时发生错误:', error);
-            setLoading(false);
-            showToast('更新地图数据时出错', 'error');
-        }
-    }
-    
-    // 显示自定义Toast通知
-    function showToast(message, type = 'info') {
-        // 检查是否已存在toast容器
-        let toastContainer = document.getElementById('toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
-            toastContainer.style.zIndex = '1080';
-            document.body.appendChild(toastContainer);
+                // 兼容两种数据格式：GeoJSON格式和普通数组
+                let features = [];
+                if (parsedData.features && Array.isArray(parsedData.features)) {
+                    // GeoJSON 格式
+                    features = parsedData.features;
+                } else if (Array.isArray(parsedData)) {
+                    // 普通数组格式
+                    features = parsedData;
+                } else {
+                    console.error('未知的数据格式', parsedData);
+            return;
         }
         
-        // 创建新的toast
-        const toastId = 'toast-' + Date.now();
-        const iconClass = type === 'success' ? 'fa-check-circle' : 
-                          type === 'error' ? 'fa-exclamation-circle' : 
-                          type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
-        
-        const toastHtml = `
-            <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fas ${iconClass} me-2"></i>${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
+                console.log('找到', features.length, '个路段数据');
+                
+                // 添加每个路段标记
+                features.forEach(feature => {
+                    // 获取属性
+                    const props = feature.properties || feature;
+                    
+                    // 获取坐标
+                    let lat, lng;
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        // GeoJSON 格式
+                        lng = feature.geometry.coordinates[0];
+                        lat = feature.geometry.coordinates[1];
+                    } else {
+                        // 普通对象格式
+                        lat = props.latitude || props.lat;
+                        lng = props.longitude || props.lng;
+                    }
+                    
+                    // 坐标检查
+                    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                        console.warn('无效的坐标:', lat, lng, props);
+                        return;
+                    }
+                    
+                    // 获取拥堵指数
+                    const congestionIndex = parseFloat(props.congestion_index) || 0;
+                    
+                    // 根据拥堵程度选择图标
+                    let selectedIcon;
+                    if (congestionIndex >= 0.7) {
+                        selectedIcon = icons.severe;
+                    } else if (congestionIndex >= 0.4) {
+                        selectedIcon = icons.moderate;
+                    } else {
+                        selectedIcon = icons.normal;
+                    }
+                    
+                    // 创建标记 - 使用图片图标
+                    const marker = L.marker([lat, lng], {
+                        icon: selectedIcon,
+                        roadId: props.id || props.road_id
+                    }).addTo(map);
+                    
+                    // 标记点击事件
+                    marker.on('click', function() {
+                        const roadId = this.options.roadId;
+                        // 高亮对应的路段列表项
+                        highlightRoadItem(roadId);
+                        // 在地图上定位并弹出信息窗口
+                        this.openPopup();
+                    });
+                    
+                    // 添加弹窗信息
+                    const roadName = props.road_name || props.name || '未命名路段';
+                    const avgSpeed = props.average_speed || props.speed || 0;
+                    const status = props.status || (congestionIndex >= 0.7 ? '严重拥堵' : 
+                                                 congestionIndex >= 0.4 ? '中度拥堵' : '畅通');
+                    
+                    const popupContent = `
+                        <div class="road-popup">
+                            <h5>${roadName}</h5>
+                            <p><strong>拥堵指数:</strong> ${congestionIndex.toFixed(2)}</p>
+                            <p><strong>平均车速:</strong> ${avgSpeed} km/h</p>
+                            <p><strong>状态:</strong> 
+                                <span class="badge ${congestionIndex >= 0.7 ? 'bg-danger' : congestionIndex >= 0.4 ? 'bg-warning' : 'bg-success'}">
+                                    ${status}
+                                </span>
+                            </p>
+                            <button class="btn btn-sm btn-primary road-detail-btn" data-road-id="${props.id || props.road_id || ''}">
+                                查看详情
+                            </button>
             </div>
         `;
         
-        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-        
-        // 初始化并显示toast
-        const toastEl = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
-        toast.show();
-        
-        // 自动移除
-        toastEl.addEventListener('hidden.bs.toast', function () {
-            toastEl.remove();
-        });
-    }
-    
-    // 连接WebSocket
-    var socket = io({
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        timeout: 20000
-    });
-    
-    // WebSocket连接状态处理
-    socket.on('connect', function() {
-        console.log('已连接到服务器');
-        // 连接成功后可以隐藏任何错误提示
-        var errorElement = document.getElementById('connection-error');
-        if (errorElement) {
-            errorElement.style.display = 'none';
-        }
-        showToast('已连接到服务器', 'success');
-    });
-    
-    socket.on('connect_error', function(error) {
-        console.error('连接错误:', error);
-        // 显示连接错误提示
-        var mapContainer = document.getElementById('map');
-        if (mapContainer && !document.getElementById('connection-error')) {
-            var errorDiv = document.createElement('div');
-            errorDiv.id = 'connection-error';
-            errorDiv.className = 'alert alert-danger position-absolute top-0 start-0 m-3 z-index-1000';
-            errorDiv.innerHTML = '<strong><i class="fas fa-exclamation-triangle me-2"></i>连接错误:</strong> 无法连接到服务器，请检查网络连接';
-            mapContainer.parentNode.appendChild(errorDiv);
-        }
-        showToast('服务器连接失败，请检查网络', 'error');
-    });
-    
-    // 接收实时数据更新
-    socket.on('traffic_update', function(data) {
-        console.log("收到数据更新:", data);
-        
-        // 验证数据完整性
-        if (!data || !data.stats) {
-            console.error("接收到的数据格式不正确");
-            showToast("数据更新失败，格式错误", "error");
-            return;
-        }
-        
-        // 更新时间显示
-        document.getElementById('update-time').textContent = data.timestamp || '未知时间';
-        
-        // 数据安全检查
-        const stats = data.stats || {};
-        const currentCongestion = parseFloat(document.getElementById('avg-congestion').textContent) || 0.3;
-        const currentSpeed = parseFloat(document.getElementById('avg-speed').textContent.replace(' km/h', '')) || 40.0;
-        const currentRoadCount = parseInt(document.getElementById('road-count').textContent) || 0;
-        const currentAlertCount = parseInt(document.getElementById('heavy-congestion-count').textContent) || 0;
-        
-        // 安全获取值，并设置默认值
-        const avgCongestion = isNaN(stats.avg_congestion) ? 0.3 : parseFloat(stats.avg_congestion);
-        const avgSpeed = isNaN(stats.avg_speed) ? 40.0 : parseFloat(stats.avg_speed);
-        
-        // 计算道路数量 - 修复格式处理逻辑
-        let roadCount = 0;
-        if (data.map_data) {
-            if (Array.isArray(data.map_data)) {
-                roadCount = data.map_data.length;
-            } else if (data.map_data.features && Array.isArray(data.map_data.features)) {
-                roadCount = data.map_data.features.length;
-            } else if (typeof data.map_data === 'string') {
-                try {
-                    // 尝试解析JSON字符串
-                    const parsedData = JSON.parse(data.map_data);
-                    if (Array.isArray(parsedData)) {
-                        roadCount = parsedData.length;
-                    } else if (parsedData.features && Array.isArray(parsedData.features)) {
-                        roadCount = parsedData.features.length;
-                    }
-                } catch (e) {
-                    console.warn("无法解析地图数据字符串", e);
+                    marker.bindPopup(popupContent);
+                    
+                    // 存储标记
+                    markers.push(marker);
+                });
+                
+                console.log('成功添加', markers.length, '个地图标记');
+                
+                // 如果没有标记，显示一个默认消息
+                if (markers.length === 0) {
+                    console.warn('没有找到有效的路段数据，将显示默认提示');
+                    const popup = L.popup()
+                        .setLatLng([centerLat, centerLng])
+                        .setContent('<div class="road-popup"><h5>没有路段数据</h5><p>当前没有可用的路段数据显示</p></div>')
+                        .openOn(map);
                 }
+            } catch (error) {
+                console.error('添加地图标记失败:', error);
             }
         }
         
-        // 安全获取警报数量
-        const alertCount = data.alerts && Array.isArray(data.alerts) ? data.alerts.length : 0;
-        
-        console.log(`数据更新: 拥堵指数=${avgCongestion}, 车速=${avgSpeed}, 路段数=${roadCount}, 警报数=${alertCount}`);
-        
-        // 使用动画更新统计数据
-        animateValue('avg-congestion', currentCongestion, avgCongestion, 1000);
-        document.getElementById('congestion-progress').style.width = Math.max(0, Math.min(100, avgCongestion * 100)) + '%';
-        
-        animateValue('avg-speed', currentSpeed, avgSpeed, 1000, ' km/h');
-        document.getElementById('speed-progress').style.width = Math.max(0, Math.min(100, avgSpeed / 60 * 100)) + '%';
-        
-        animateValue('road-count', currentRoadCount, roadCount, 800);
-        animateValue('heavy-congestion-count', currentAlertCount, alertCount, 800);
-        
-        // 安全地更新地图
-        if (data.map_data) {
-            updateMapMarkers(data.map_data);
-        } else {
-            console.warn("地图数据为空或格式不正确");
-        }
-        
-        // 安全地更新拥堵列表
-        if (data.congestion_list && Array.isArray(data.congestion_list) && data.congestion_list.length > 0) {
-            updateCongestionList(data.congestion_list);
-        } else {
-            console.warn("拥堵列表数据为空或格式不正确");
-        }
-        
-        // 安全地更新警报
-        if (data.alerts && Array.isArray(data.alerts)) {
-            updateAlerts(data.alerts);
-        } else {
-            console.warn("警报数据为空或格式不正确");
-            updateAlerts([]); // 传入一个空数组以显示"无警报"状态
-        }
-    });
-    
-    // 值动画函数
-    function animateValue(elementId, start, end, duration, suffix = '') {
-        // 安全检查
-        start = isNaN(start) ? 0 : start;
-        end = isNaN(end) ? 0 : end;
-        
-        const element = document.getElementById(elementId);
-        if (!element) {
-            console.error(`找不到元素: ${elementId}`);
-            return;
-        }
-        
-        let startTimestamp = null;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const value = progress * (end - start) + start;
+        // 渲染路段列表
+        function renderRoadList() {
+            const roadListContainer = document.getElementById('road-segments-list');
             
-            // 根据不同类型的值，使用不同的格式化方法
-            if (elementId === 'road-count' || elementId === 'heavy-congestion-count') {
-                element.textContent = Math.round(value); // 整数显示
-            } else {
-                element.textContent = value.toFixed(2) + suffix;
+            if (!roadListContainer) {
+                console.error('找不到路段列表容器元素');
+                return;
             }
             
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            } else {
-                // 确保最终值正确
-                if (elementId === 'road-count' || elementId === 'heavy-congestion-count') {
-                    element.textContent = Math.round(end); // 整数显示
-                } else {
-                    element.textContent = end.toFixed(2) + suffix;
-                }
+            // 调试 - 检查congestedRoads是否有数据
+            console.log('渲染路段列表: 共有', congestedRoads.length, '条路段数据');
+            
+            // 确保有路段数据
+            if (!congestedRoads || congestedRoads.length === 0) {
+                console.warn('没有路段数据');
+                roadListContainer.innerHTML = '<div class="p-3 text-center">暂无路段数据</div>';
+                return;
             }
-        };
-        window.requestAnimationFrame(step);
-    }
-    
-    // 接收历史趋势数据
-    socket.on('trend_data', function(data) {
-        updateTrendChart(data);
-        showToast('历史趋势数据已更新', 'success');
-    });
-    
-    // 更新警报
-    function updateAlerts(alerts) {
-        const alertContainer = document.getElementById('alert-container');
-        const alertCount = document.getElementById('alert-count');
-        
-        // 更新计数
-        alertCount.textContent = alerts.length;
-        
-        // 如果没有警报，显示空状态
-        if (!alerts || alerts.length === 0) {
-            alertContainer.innerHTML = `
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-75"></i>
-                    <p>当前没有严重拥堵警报</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // 创建新的警报HTML
-        let alertsHTML = '';
-        alerts.forEach(alert => {
-            alertsHTML += `
-                <div class="alert alert-${alert.level} d-flex align-items-center shadow-sm border-start border-4 border-${alert.level}">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <div>
-                        ${alert.message}
-                        <small class="d-block text-muted mt-1"><i class="far fa-clock me-1"></i>${alert.timestamp}</small>
+            
+            // 获取过滤器值 - 修复此处的错误
+            let filterValue = 'all'; // 设置默认值
+            const filterElement = document.getElementById('road-filter');
+            if (filterElement) {
+                filterValue = filterElement.value;
+                console.log('使用过滤器:', filterValue);
+            }
+            
+            // 过滤路段
+            let filteredRoads = congestedRoads;
+            if (filterValue === 'congested') {
+                filteredRoads = congestedRoads.filter(road => road.congestion_index >= 0.4);
+            } else if (filterValue === 'smooth') {
+                filteredRoads = congestedRoads.filter(road => road.congestion_index < 0.4);
+            }
+            
+            console.log('过滤后的路段数据:', filteredRoads.length, '条');
+            
+            // 生成HTML
+            let html = '';
+            filteredRoads.forEach(road => {
+                // 检查路段数据是否有效
+                if (!road) {
+                    console.warn('发现无效的路段数据');
+                    return;
+                }
+                
+                // 调试 - 如果是第一条数据，打印详细信息
+                if (filteredRoads.indexOf(road) === 0) {
+                    console.log('路段数据示例:', road);
+                }
+                
+                // 确保congestion_index存在
+                const congestionIndex = parseFloat(road.congestion_index) || 0;
+                
+                // 确定进度条颜色
+                let progressClass = 'bg-success';
+                if (congestionIndex >= 0.7) {
+                    progressClass = 'bg-danger';
+                } else if (congestionIndex >= 0.4) {
+                    progressClass = 'bg-warning';
+                }
+                
+                // 确保路段对象中包含必要的字段或提供默认值
+                const roadId = road.id || road.road_id || '';
+                const roadName = road.road_name || '未命名路段';
+                const status = road.status || (congestionIndex >= 0.7 ? '严重拥堵' : (congestionIndex >= 0.4 ? '中度拥堵' : '畅通'));
+                const district = road.district || '未知区域';
+                const avgSpeed = road.average_speed || 0;
+                
+                html += `
+                    <div class="road-segment-item" data-road-id="${roadId}">
+                        <div class="d-flex justify-content-between">
+                            <div class="fw-bold">${roadName}</div>
+                            <div>
+                                <span class="badge ${congestionIndex >= 0.7 ? 'bg-danger' : congestionIndex >= 0.4 ? 'bg-warning' : 'bg-success'}">
+                                    ${status}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="small text-muted">${district} | ${avgSpeed} km/h</div>
+                        <div class="road-progress">
+                            <div class="road-progress-bar ${progressClass}" style="width: ${congestionIndex * 100}%"></div>
+                        </div>
                     </div>
-                </div>
-            `;
-        });
-        
-        // 使用淡入动画更新内容
-        alertContainer.style.opacity = '0';
-        setTimeout(() => {
-            alertContainer.innerHTML = alertsHTML;
-            alertContainer.style.opacity = '1';
-        }, 300);
-    }
-    
-    // 更新趋势图
-    function updateTrendChart(data) {
-        var ctx = document.getElementById('trendChart').getContext('2d');
-        
-        // 为趋势图添加渐变背景
-        var gradientFill = ctx.createLinearGradient(0, 0, 0, 400);
-        gradientFill.addColorStop(0, 'rgba(55, 114, 255, 0.2)');
-        gradientFill.addColorStop(1, 'rgba(55, 114, 255, 0)');
-        
-        if (window.trendChart) {
-            window.trendChart.destroy();
-        }
-        
-        window.trendChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.time_labels,
-                datasets: [
-                    {
-                        label: '平均拥堵指数',
-                        data: data.congestion_index,
-                        borderColor: '#3772ff',
-                        backgroundColor: gradientFill,
-                        borderWidth: 3,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#ffffff',
-                        pointBorderColor: '#3772ff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                    duration: 1000,
-                    easing: 'easeOutQuart'
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 1,
-                        grid: {
-                            color: 'rgba(0,0,0,0.05)'
-                        },
-                        ticks: {
-                            font: {
-                                size: 11
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: '拥堵指数',
-                            font: {
-                                size: 13,
-                                weight: 'bold'
-                            }
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false
-                        },
-                        ticks: {
-                            font: {
-                                size: 11
-                            },
-                            maxRotation: 45,
-                            minRotation: 45
-                        },
-                        title: {
-                            display: true,
-                            text: '时间',
-                            font: {
-                                size: 13,
-                                weight: 'bold'
-                            }
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            boxWidth: 12,
-                            padding: 20,
-                            font: {
-                                size: 13
-                            }
-                        }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        titleFont: {
-                            size: 14
-                        },
-                        bodyFont: {
-                            size: 13
-                        },
-                        padding: 10,
-                        displayColors: false
-                    }
-                }
-            }
-        });
-    }
-    
-    // 请求历史趋势数据
-    socket.emit('get_trend_data');
-    
-    // 确保在页面加载后调用一次标记更新
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('初始化地图标记...');
-        
-        // 确保initialMapData是有效的
-        if (!initialMapData) {
-            console.error('初始地图数据无效');
-            showToast('初始地图数据加载失败', 'error');
-            return;
-        }
-        
-        // 计算并显示正确的路段数
-        let roadCount = 0;
-        if (Array.isArray(initialMapData)) {
-            roadCount = initialMapData.length;
-            console.log('数据项数(数组):', roadCount);
-        } else if (initialMapData.features && Array.isArray(initialMapData.features)) {
-            roadCount = initialMapData.features.length;
-            console.log('数据项数(GeoJSON):', roadCount);
-        } else {
-            console.warn('无法确定初始数据类型:', typeof initialMapData);
-        }
-        
-        // 更新显示的路段数量
-        const roadCountElement = document.getElementById('road-count');
-        if (roadCountElement) {
-            roadCountElement.textContent = roadCount;
-        }
-        
-        // 调试输出一些数据以确认格式
-        if(roadCount > 0) {
-            if (Array.isArray(initialMapData) && initialMapData.length > 0) {
-                console.log('第一条数据示例:', JSON.stringify(initialMapData[0]));
-            } else if (initialMapData.features && initialMapData.features.length > 0) {
-                console.log('第一条特征示例:', JSON.stringify(initialMapData.features[0]));
+                `;
+            });
+            
+            if (html === '') {
+                html = '<div class="p-3 text-center">当前过滤条件下无路段数据</div>';
             }
             
-            updateMapMarkers(initialMapData);
+            // 更新容器内容
+            roadListContainer.innerHTML = html;
+            console.log('路段列表已更新');
             
-            // 为初始拥堵列表添加点击功能
-            initializeInitialCongestionList();
-        } else {
-            console.warn('初始化时没有路段数据');
-            showToast('没有可显示的路段数据', 'warning');
-        }
-    });
-    
-    // 更新拥堵列表并添加交互功能
-    function updateCongestionList(congestionList) {
-        var listHTML = '';
-        
-        congestionList.forEach(function(road) {
-            var statusClass = '';
-            if (road.status === '畅通') {
-                statusClass = 'status-normal';
-            } else if (road.status === '轻度拥堵') {
-                statusClass = 'status-light';
-            } else if (road.status === '中度拥堵') {
-                statusClass = 'status-moderate';
-            } else {
-                statusClass = 'status-heavy';
-            }
-            
-            listHTML += `<tr class="road-row" data-road-id="${road.id || ''}" data-road-name="${road.road_name}">
-                <td class="ps-3">${road.road_name}</td>
-                <td><strong>${road.congestion_index.toFixed(2)}</strong></td>
-                <td class="pe-3">
-                    <span class="status-badge ${statusClass}">${road.status}</span>
-                </td>
-            </tr>`;
-        });
-        
-        var congestionListElement = document.getElementById('congestion-list');
-        
-        // 使用淡入动画更新列表
-        congestionListElement.style.opacity = '0';
-        setTimeout(() => {
-            congestionListElement.innerHTML = listHTML;
-            congestionListElement.style.opacity = '1';
-            
-            // 为每行添加点击事件
-            document.querySelectorAll('.road-row').forEach(function(row) {
-                row.style.cursor = 'pointer'; // 改变鼠标指针样式
-                
-                // 鼠标悬停效果
-                row.addEventListener('mouseenter', function() {
-                    this.classList.add('table-active');
-                });
-                
-                row.addEventListener('mouseleave', function() {
-                    this.classList.remove('table-active');
-                });
-                
-                // 点击事件 - 定位到地图上的标记
-                row.addEventListener('click', function(e) {
-                    const roadId = this.getAttribute('data-road-id');
-                    const roadName = this.getAttribute('data-road-name');
+            // 添加点击事件
+            document.querySelectorAll('.road-segment-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const roadId = this.dataset.roadId;
                     
-                    // 如果按住Ctrl键点击，直接跳转到详情页
-                    if (e.ctrlKey || e.metaKey) {
-                        if (roadId) {
-                            window.location.href = getRoadDetailUrl(roadId);
-                            return;
-                        }
-                    }
+                    // 高亮当前项
+                    document.querySelectorAll('.road-segment-item').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                    this.classList.add('active');
                     
-                    // 普通点击，先定位到地图上的标记
-                    const success = locateRoadMarker(roadId, roadName);
-                    
-                    if (!success) {
-                        console.warn('未找到路段标记:', roadName);
-                        showToast(`未找到路段标记: ${roadName}`, 'warning');
+                    // 在地图上查找并定位到对应标记 - 使用增强的查找函数
+                    const roadMarker = findMarkerByRoadId(roadId);
+                    if (roadMarker) {
+                        // 获取标记位置
+                        const position = roadMarker.getLatLng();
+                        // 平滑移动地图到标记位置
+                        map.flyTo(position, 15, {
+                            animate: true,
+                            duration: 1
+                        });
+                        // 打开弹窗
+                        roadMarker.openPopup();
+                        console.log('成功导航到路段:', roadId);
                     } else {
-                        // 定位成功后，添加一个详情链接提示
-                        if (roadId) {
-                            setTimeout(() => {
-                                showToast(`<span>按住Ctrl键点击可直接查看<a href="${getRoadDetailUrl(roadId)}" class="text-white ms-1 text-decoration-underline">路段详情</a></span>`, 'info');
-                            }, 1000);
-                        }
-                    }
-                });
-                
-                // 添加双击事件直接跳转到详情页
-                row.addEventListener('dblclick', function() {
-                    const roadId = this.getAttribute('data-road-id');
-                    if (roadId) {
-                        window.location.href = getRoadDetailUrl(roadId);
-                    } else {
-                        showToast('无法获取路段ID，无法跳转到详情页面', 'warning');
-                    }
-                });
-            });
-        }, 300);
-    }
-
-    // 初始化已有的拥堵列表点击事件
-    function initializeInitialCongestionList() {
-        // 为已有的拥堵列表行添加点击功能
-        document.querySelectorAll('#congestion-list tr').forEach(function(row) {
-            // 为每行添加类和鼠标样式
-            row.classList.add('road-row');
-            row.style.cursor = 'pointer';
-            
-            // 提取路段名称和ID（从自定义属性中）
-            const roadName = row.querySelector('td:first-child').textContent.trim();
-            row.setAttribute('data-road-name', roadName);
-            const roadId = row.getAttribute('data-road-id') || ''; // 可能不存在
-            
-            // 鼠标悬停效果
-            row.addEventListener('mouseenter', function() {
-                this.classList.add('table-active');
-            });
-            
-            row.addEventListener('mouseleave', function() {
-                this.classList.remove('table-active');
-            });
-            
-            // 点击事件 - 定位到地图上的标记
-            row.addEventListener('click', function(e) {
-                const roadName = this.getAttribute('data-road-name');
-                const roadId = this.getAttribute('data-road-id');
-                
-                // 如果按住Ctrl键点击，直接跳转到详情页
-                if (e.ctrlKey || e.metaKey) {
-                    if (roadId) {
-                        window.location.href = getRoadDetailUrl(roadId);
-                        return;
-                    }
-                }
-                
-                // 尝试定位到标记
-                const success = locateRoadMarker(roadId, roadName);
-                
-                if (!success) {
-                    console.warn('未找到路段标记:', roadName);
-                    showToast(`未找到路段标记: ${roadName}`, 'warning');
-                } else {
-                    // 定位成功后，添加一个详情链接提示
-                    if (roadId) {
-                        setTimeout(() => {
-                            showToast(`<span>按住Ctrl键点击可直接查看<a href="${getRoadDetailUrl(roadId)}" class="text-white ms-1 text-decoration-underline">路段详情</a></span>`, 'info');
-                        }, 1000);
-                    }
-                }
-            });
-            
-            // 添加双击事件直接跳转到详情页
-            row.addEventListener('dblclick', function() {
-                const roadId = this.getAttribute('data-road-id');
-                if (roadId) {
-                    window.location.href = getRoadDetailUrl(roadId);
-                } else {
-                    showToast('无法获取路段ID，无法跳转到详情页面', 'warning');
-                }
-            });
-        });
-    }
-
-    // 定位到指定路段的标记
-    function locateRoadMarker(roadId, roadName) {
-        let marker = null;
-        
-        // 先尝试通过ID查找
-        if (roadId && markerReferences[roadId]) {
-            marker = markerReferences[roadId];
-        }
-        // 如果没找到，尝试通过名称查找
-        else if (roadName && markerReferences[roadName]) {
-            marker = markerReferences[roadName];
-        }
-        
-        if (marker) {
-            // 移除所有已有的高亮样式
-            document.querySelectorAll('.road-row-active').forEach(el => {
-                el.classList.remove('road-row-active');
-            });
-            
-            // 平滑地将地图中心移动到标记位置
-            map.flyTo(marker.getLatLng(), 15, {
-                animate: true,
-                duration: 1.5,
-                easeLinearity: 0.25
-            });
-            
-            // 打开弹出窗口
-            marker.openPopup();
-            
-            // 突出显示标记（可选）
-            if(marker._icon) {
-                marker._icon.classList.add('marker-highlight');
-                setTimeout(() => {
-                    if(marker._icon) {
-                        marker._icon.classList.remove('marker-highlight');
-                    }
-                }, 3000);
-            }
-            
-            // 找到并高亮列表中对应的行
-            let foundRow = false;
-            document.querySelectorAll('.road-row').forEach(row => {
-                const rowId = row.getAttribute('data-road-id');
-                const rowName = row.getAttribute('data-road-name');
-                
-                if ((roadId && rowId === roadId) || (roadName && rowName === roadName)) {
-                    // 高亮该行
-                    row.classList.add('road-row-active');
-                    
-                    // 滚动到该行
-                    const tableBody = row.closest('tbody');
-                    if (tableBody) {
-                        const rowTop = row.offsetTop;
-                        const tableHeight = tableBody.clientHeight;
-                        const isRowVisible = (rowTop >= tableBody.scrollTop) && 
-                                           (rowTop <= tableBody.scrollTop + tableHeight - row.clientHeight);
+                        console.warn('找不到对应的地图标记:', roadId);
+                        // 尝试查找同名路段
+                        const roadName = this.querySelector('.fw-bold').textContent;
+                        let foundByName = false;
                         
-                        if (!isRowVisible) {
-                            // 平滑滚动到该行
-                            tableBody.scrollTo({
-                                top: rowTop - tableHeight / 2,
-                                behavior: 'smooth'
+                        markers.forEach(marker => {
+                            if (marker.getPopup() && marker.getPopup()._content.includes(roadName)) {
+                                const position = marker.getLatLng();
+                                map.flyTo(position, 15, {
+                                    animate: true,
+                                    duration: 1
+                                });
+                                marker.openPopup();
+                                foundByName = true;
+                                console.log('通过路段名称导航成功:', roadName);
+                                return;
+                            }
+                        });
+                        
+                        if (!foundByName) {
+                            console.error('无法找到匹配的标记，路段ID:', roadId, '路段名称:', roadName);
+                        }
+                    }
+                });
+            });
+        }
+        
+        // 高亮路段列表项
+        function highlightRoadItem(roadId) {
+            if (!roadId) return;
+            
+            document.querySelectorAll('.road-segment-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.roadId == roadId) {
+                    item.classList.add('active');
+                    // 滚动到该元素
+                    item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        }
+        
+        // 查找地图标记的辅助函数 - 更强健的标记查找逻辑
+        function findMarkerByRoadId(roadId) {
+            if (!roadId) return null;
+            
+            // 尝试直接匹配
+            let marker = markers.find(m => m.options.roadId == roadId);
+            
+            // 如果找不到，尝试在congestedRoads中查找匹配的道路信息
+            if (!marker) {
+                const roadInfo = congestedRoads.find(r => 
+                    r.id == roadId || r.road_id == roadId || r.segment_id == roadId
+                );
+                
+                if (roadInfo) {
+                    // 尝试用经纬度找到最近的标记
+                    if (roadInfo.latitude && roadInfo.longitude) {
+                        const lat = parseFloat(roadInfo.latitude);
+                        const lng = parseFloat(roadInfo.longitude);
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            let closestMarker = null;
+                            let closestDistance = Infinity;
+                            
+                            markers.forEach(m => {
+                                const mLat = m.getLatLng().lat;
+                                const mLng = m.getLatLng().lng;
+                                const distance = Math.sqrt(
+                                    Math.pow(mLat - lat, 2) + Math.pow(mLng - lng, 2)
+                                );
+                                
+                                if (distance < closestDistance) {
+                                    closestDistance = distance;
+                                    closestMarker = m;
+                                }
                             });
+                            
+                            // 如果最近的标记距离小于0.01（大约1公里），认为是同一个位置
+                            if (closestDistance < 0.01) {
+                                marker = closestMarker;
+                            }
                         }
                     }
                     
-                    foundRow = true;
+                    // 如果还找不到，尝试根据名称匹配
+                    if (!marker && roadInfo.road_name) {
+                        markers.forEach(m => {
+                            const popup = m.getPopup();
+                            if (popup && popup._content.includes(roadInfo.road_name)) {
+                                marker = m;
+                                return;
+                            }
+                        });
+                    }
                 }
-            });
-            
-            // 显示成功消息
-            if (foundRow) {
-                showToast(`已定位到路段: ${roadName || '未知路段'}`, 'success');
             }
             
-            return true;
+            return marker;
         }
         
-        return false;
-    }
+        // 初始化
+        setTimeout(() => {
+            try {
+                console.log('开始初始化地图标记...');
+                addMapMarkers();
+                console.log('开始初始化路段列表...');
+                renderRoadList();
+                
+                // 额外尝试修复：如果路段列表还是显示加载状态，5秒后再尝试一次
+                setTimeout(() => {
+                    const roadListContainer = document.getElementById('road-segments-list');
+                    if (roadListContainer && roadListContainer.innerHTML.includes('加载路段数据中')) {
+                        console.log('路段列表仍处于加载状态，尝试重新渲染...');
+                        renderRoadList();
+                    }
+                }, 5000);
+            } catch (error) {
+                console.error('初始化失败:', error);
+                // 确保页面不会一直显示加载中
+                const roadListContainer = document.getElementById('road-segments-list');
+                if (roadListContainer) {
+                    roadListContainer.innerHTML = '<div class="p-3 text-center text-danger">加载失败，请刷新页面重试</div>';
+                }
+            }
+        }, 100);
+        
+        // 添加过滤器变化事件 - 检查元素是否存在
+        const filterElement = document.getElementById('road-filter');
+        if (filterElement) {
+            filterElement.addEventListener('change', renderRoadList);
+        }
+        
+        // 添加地图刷新按钮事件
+        const refreshButton = document.getElementById('refresh-map');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', function() {
+                // 这里实际应用中应该从服务器获取最新数据
+                addMapMarkers();
+                this.classList.add('btn-loading');
+                setTimeout(() => {
+                    this.classList.remove('btn-loading');
+                }, 500);
+            });
+        }
+        
+        // 初始化趋势图
+        const ctxElement = document.getElementById('trendChart');
+        if (ctxElement) {
+            const ctx = ctxElement.getContext('2d');
+            const trendChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+                    datasets: [{
+                        label: '平均拥堵指数',
+                        data: [0.2, 0.15, 0.1, 0.3, 0.7, 0.5, 0.4, 0.45, 0.65, 0.8, 0.5, 0.3],
+                        backgroundColor: 'rgba(55, 114, 255, 0.2)',
+                        borderColor: 'rgba(55, 114, 255, 1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // 添加Socket.IO连接逻辑
+        const socket = io();
+        socket.on('connect', function() {
+            console.log('Socket.IO连接成功');
+            // 添加连接状态指示
+            const updateTime = document.getElementById('update-time');
+            if (updateTime) {
+                updateTime.innerHTML += ' <i class="fas fa-circle text-success" style="font-size: 8px;" title="实时连接已建立"></i>';
+            }
+        });
+
+        // 监听交通数据更新
+        socket.on('traffic_update', function(data) {
+            console.log('接收到实时数据更新');
+            
+            try {
+                // 更新时间戳
+                const updateTimeElement = document.getElementById('update-time');
+                if (updateTimeElement) {
+                    updateTimeElement.textContent = data.timestamp;
+                }
+                
+                // 更新拥堵路段列表
+                if (data.congestion_list) {
+                    console.log('更新拥堵路段列表，新数据条数:', data.congestion_list.length);
+                    
+                    // 处理新的路段数据，确保包含所有必要字段
+                    const processedRoads = data.congestion_list.map(road => {
+                        // 添加默认值避免空值出错
+                        return {
+                            id: road.id || road.road_id || road.segment_id || `road_${Math.random().toString(36).substr(2, 9)}`,
+                            road_id: road.road_id || road.id || road.segment_id || '',
+                            road_name: road.road_name || '未命名路段',
+                            congestion_index: parseFloat(road.congestion_index) || 0,
+                            status: road.status || '未知',
+                            district: road.district || '未知区域',
+                            average_speed: parseFloat(road.average_speed) || 0,
+                            latitude: parseFloat(road.latitude) || 0,
+                            longitude: parseFloat(road.longitude) || 0
+                        };
+                    });
+                    
+                    // 更新全局拥堵路段数据
+                    congestedRoads = processedRoads;
+                    
+                    // 刷新路段列表显示
+                    renderRoadList();
+                }
+                
+                // 更新地图数据
+                if (data.map_data) {
+                    console.log('更新地图标记，新数据条数:', data.map_data.length);
+                    // 清除现有标记并添加新标记
+                    addMapMarkers();
+                }
+                
+                // 更新统计数据
+                if (data.stats) {
+                    updateStatistics(data.stats);
+                }
+                
+                // 更新警报
+                if (data.alerts) {
+                    updateAlerts(data.alerts);
+                }
+            } catch (error) {
+                console.error('处理实时数据更新时出错:', error);
+            }
+        });
+
+        // 更新统计数据的辅助函数
+        function updateStatistics(stats) {
+            try {
+                // 拥堵指数
+                const congestionElement = document.querySelector('.stat-card.congestion h2');
+                if (congestionElement && stats.avg_congestion !== undefined) {
+                    congestionElement.textContent = stats.avg_congestion.toFixed(2);
+                    
+                    // 更新进度条
+                    const progressBar = congestionElement.closest('.card-body').querySelector('.progress-bar');
+                    if (progressBar) {
+                        progressBar.style.width = `${stats.avg_congestion * 100}%`;
+                    }
+                }
+                
+                // 平均车速
+                const speedElement = document.querySelector('.stat-card.speed h2');
+                if (speedElement && stats.avg_speed !== undefined) {
+                    speedElement.textContent = stats.avg_speed.toFixed(1);
+                }
+                
+                // 监控路段数
+                const roadCountElement = document.querySelector('.stat-card:nth-child(3) h2');
+                if (roadCountElement && stats.total_roads !== undefined) {
+                    roadCountElement.textContent = stats.total_roads;
+                }
+                
+                // 严重拥堵路段数
+                const severeCountElement = document.querySelector('.stat-card:nth-child(4) h2');
+                if (severeCountElement && stats.severe_count !== undefined) {
+                    severeCountElement.textContent = stats.severe_count;
+                }
+            } catch (error) {
+                console.error('更新统计数据时出错:', error);
+            }
+        }
+
+        // 更新警报的辅助函数
+        function updateAlerts(alerts) {
+            try {
+                const alertContainer = document.getElementById('alert-container');
+                const alertCount = document.getElementById('alert-count');
+                
+                if (alertContainer) {
+                    if (alerts.length === 0) {
+                        // 无警报
+                        alertContainer.innerHTML = `
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-75"></i>
+                                <p>当前没有严重拥堵警报</p>
+                            </div>
+                        `;
+                    } else {
+                        // 有警报，生成警报列表
+                        let alertsHtml = '';
+                        alerts.forEach(alert => {
+                            const level = alert.level || 'danger';
+                            
+                            alertsHtml += `
+                                <div class="alert alert-${level} d-flex align-items-center shadow-sm border-start border-4 border-${level} py-2 px-3">
+                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                    <div>
+                                        ${alert.message || `${alert.road_name} 拥堵指数: ${alert.congestion_index.toFixed(2)}`}
+                                        <small class="d-block text-muted mt-1"><i class="far fa-clock me-1"></i>${alert.timestamp || '刚刚'}</small>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        alertContainer.innerHTML = alertsHtml;
+                    }
+                }
+                
+                if (alertCount) {
+                    alertCount.textContent = alerts.length;
+                }
+            } catch (error) {
+                console.error('更新警报数据时出错:', error);
+            }
+        }
+
+        // 添加Socket.IO连接关闭处理
+        socket.on('disconnect', function() {
+            console.log('Socket.IO连接断开');
+            const updateTime = document.getElementById('update-time');
+            if (updateTime) {
+                // 移除连接状态指示
+                updateTime.innerHTML = updateTime.innerHTML.replace(/<i class="fas fa-circle.*?<\/i>/, '');
+                updateTime.innerHTML += ' <i class="fas fa-circle text-danger" style="font-size: 8px;" title="实时连接已断开"></i>';
+            }
+        });
+        
+        // 载入未来交通预测数据
+        function loadPredictionData() {
+            const loadingElement = document.getElementById('prediction-loading');
+            const resultsElement = document.getElementById('prediction-results');
+            
+            if (!loadingElement || !resultsElement) {
+                console.error('未找到预测数据相关DOM元素');
+                return;
+            }
+            
+            // 显示加载中状态
+            loadingElement.classList.remove('d-none');
+            resultsElement.classList.add('d-none');
+            
+            // 从预测接口获取数据
+            fetch('/prediction')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('预测数据请求失败');
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    // 解析HTML响应
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    // 提取预测数据
+                    const predictionCards = doc.querySelectorAll('.congestion-card');
+                    
+                    if (predictionCards && predictionCards.length > 0) {
+                        // 显示第一个预测卡片的简化版本
+                        const firstCard = predictionCards[0];
+                        const timestamp = firstCard.querySelector('.card-header h5').textContent.trim();
+                        const avgCongestion = firstCard.querySelector('.prediction-value').textContent.trim();
+                        const statusBadges = firstCard.querySelectorAll('.badge');
+                        
+                        let statusHtml = '';
+                        statusBadges.forEach(badge => {
+                            statusHtml += badge.outerHTML + ' ';
+                        });
+                        
+                        // 构建预测结果HTML
+                        const resultHtml = `
+                            <div class="prediction-summary">
+                                <h6 class="mb-2">最近预测: ${timestamp}</h6>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>平均拥堵指数:</div>
+                                    <div><strong>${avgCongestion}</strong></div>
+                                </div>
+                                <div class="mb-3">
+                                    <small class="text-muted">预计路段状态分布:</small>
+                                    <div class="mt-1">${statusHtml}</div>
+                                </div>
+                                <div class="text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    查看详情了解未来3小时预测
+                                </div>
+                            </div>
+                        `;
+                        
+                        // 更新DOM
+                        resultsElement.innerHTML = resultHtml;
+                        loadingElement.classList.add('d-none');
+                        resultsElement.classList.remove('d-none');
+                    } else {
+                        // 处理找不到预测卡片的情况
+                        resultsElement.innerHTML = `
+                            <div class="text-center py-3">
+                                <i class="fas fa-exclamation-circle fa-3x text-muted mb-3"></i>
+                                <p>暂时无法生成交通预测</p>
+                                <small class="text-muted">可能需要更多交通数据</small>
+                            </div>
+                        `;
+                        loadingElement.classList.add('d-none');
+                        resultsElement.classList.remove('d-none');
+                    }
+                })
+                .catch(error => {
+                    console.error('获取预测数据出错:', error);
+                    // 显示错误信息
+                    resultsElement.innerHTML = `
+                        <div class="text-center py-3">
+                            <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                            <p>加载预测数据失败</p>
+                            <small class="text-muted">请稍后再试</small>
+                        </div>
+                    `;
+                    loadingElement.classList.add('d-none');
+                    resultsElement.classList.remove('d-none');
+                });
+        }
+        
+        // 初始加载预测数据
+        loadPredictionData();
+        
+        // 定期更新预测数据（每10分钟）
+        setInterval(loadPredictionData, 10 * 60 * 1000);
+    });
 </script>
 {% endblock %} 

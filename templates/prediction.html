@@ -71,11 +71,31 @@
                                         </div>
                                         
                                         <div class="progress mt-4" style="height: 8px;">
-                                            <div class="progress-bar bg-success" style="width: {{ prediction.status_counts.get('畅通', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
-                                            <div class="progress-bar bg-warning" style="width: {{ prediction.status_counts.get('轻度拥堵', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
-                                            <div class="progress-bar bg-orange" style="width: {{ prediction.status_counts.get('中度拥堵', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
-                                            <div class="progress-bar bg-danger" style="width: {{ prediction.status_counts.get('严重拥堵', 0) / (prediction.congested_count + prediction.status_counts.get('畅通', 0) or 1) * 100 }}%"></div>
+                                            <div class="progress-bar bg-success" id="progress-normal-{{ loop.index }}" style="width: 0%"></div>
+                                            <div class="progress-bar bg-warning" id="progress-light-{{ loop.index }}" style="width: 0%"></div>
+                                            <div class="progress-bar bg-orange" id="progress-moderate-{{ loop.index }}" style="width: 0%"></div>
+                                            <div class="progress-bar bg-danger" id="progress-severe-{{ loop.index }}" style="width: 0%"></div>
                                         </div>
+                                        
+                                        <script>
+                                            // 计算进度条宽度
+                                            document.addEventListener('DOMContentLoaded', function() {
+                                                const normal = {{ prediction.status_counts.get('畅通', 0) }};
+                                                const light = {{ prediction.status_counts.get('轻度拥堵', 0) }};
+                                                const moderate = {{ prediction.status_counts.get('中度拥堵', 0) }};
+                                                const severe = {{ prediction.status_counts.get('严重拥堵', 0) }};
+                                                const total = normal + light + moderate + severe || 1;
+                                                
+                                                document.getElementById('progress-normal-{{ loop.index }}').style.width = 
+                                                    (normal / total * 100) + '%';
+                                                document.getElementById('progress-light-{{ loop.index }}').style.width = 
+                                                    (light / total * 100) + '%';
+                                                document.getElementById('progress-moderate-{{ loop.index }}').style.width = 
+                                                    (moderate / total * 100) + '%';
+                                                document.getElementById('progress-severe-{{ loop.index }}').style.width = 
+                                                    (severe / total * 100) + '%';
+                                            });
+                                        </script>
                                         
                                         <div class="text-muted mt-3 small">
                                             <i class="fas fa-info-circle me-1"></i>
@@ -87,7 +107,7 @@
                         {% endfor %}
                     </div>
                 {% else %}
-                    <div class="text-center py-5">
+                    <div class="prediction-loading">
                         <i class="fas fa-exclamation-circle fa-3x text-muted mb-3"></i>
                         <p>无法生成交通预测</p>
                         <small class="text-muted">可能需要更多交通数据或者模型尚未完成训练</small>
@@ -100,7 +120,7 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="card">
+        <div class="card prediction-info-card">
             <div class="card-header bg-white">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-info-circle me-2"></i>预测说明

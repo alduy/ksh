@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime, timedelta
+import random
 
 class TrafficDataProcessor:
     """交通数据处理类"""
@@ -16,470 +17,399 @@ class TrafficDataProcessor:
         pass
     
     def prepare_map_data(self, df):
-        """准备地图展示数据（GeoJSON格式）"""
+        """准备地图数据，确保所有值都是JSON可序列化的"""
         try:
             if df.empty:
-                print("WARNING: 用于地图准备的数据为空")
-                return json.dumps({'type': 'FeatureCollection', 'features': []})
+                return self.safe_json_dumps([])
             
-            # 创建GeoJSON特征列表
-            features = []
+            # 选择需要的列，避免不必要的数据传输
+            columns = ['road_id', 'road_name', 'longitude', 'latitude', 'congestion_index', 'status']
+            available_columns = [col for col in columns if col in df.columns]
             
-            for _, row in df.iterrows():
-                try:
-                    # 确保经纬度值有效
-                    latitude = float(row.get('latitude', 0))
-                    longitude = float(row.get('longitude', 0))
-                    
-                    if not latitude or not longitude or abs(latitude) > 90 or abs(longitude) > 180:
-                        print(f"WARNING: 无效的地理坐标 lat={latitude}, lon={longitude}")
-                        # 使用贵阳市中心坐标作为备用
-                        latitude = 26.598194
-                        longitude = 106.707410
-                    
-                    # 获取状态对应的颜色
-                    status_color = '#28a745'  # 默认绿色
-                    if 'status' in row:
-                        if '严重' in row['status']:
-                            status_color = '#dc3545'  # 红色
-                        elif '中度' in row['status']:
-                            status_color = '#ffc107'  # 黄色
-                        elif '轻度' in row['status']:
-                            status_color = '#17a2b8'  # 青色
-                    
-                    # 构建弹窗内容
-                    popup_content = f"""
-                    <div style='min-width: 180px;'>
-                        <h6 style='margin-bottom: 5px; font-weight: bold;'>{row.get('road_name', 'N/A')}</h6>
-                        <div style='font-size: 12px; color: #666;'>{row.get('district', 'N/A')}</div>
-                        <hr style='margin: 5px 0;'>
-                        <div style='display: flex; justify-content: space-between; margin-bottom: 5px;'>
-                            <span>拥堵指数:</span>
-                            <span style='font-weight: bold; color: {status_color};'>{row.get('congestion_index', 0):.2f}</span>
-                        </div>
-                        <div style='display: flex; justify-content: space-between; margin-bottom: 5px;'>
-                            <span>状态:</span>
-                            <span style='font-weight: bold; color: {status_color};'>{row.get('status', 'N/A')}</span>
-                        </div>
-                        <div style='display: flex; justify-content: space-between;'>
-                            <span>平均车速:</span>
-                            <span>{row.get('average_speed', 0)} km/h</span>
-                        </div>
-                        <div style='margin-top: 8px;'>
-                            <a href='/road/{row.get('segment_id', 0)}' 
-                               style='display: block; text-align: center; padding: 4px; 
-                                     background-color: #007bff; color: white; 
-                                     text-decoration: none; border-radius: 4px;'>
-                                查看详情
-                            </a>
-                        </div>
-                    </div>
-                    """
-                    
-                    # 构建特征
-                    feature = {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'Point',
-                            'coordinates': [longitude, latitude]
-                        },
-                        'properties': {
-                            'id': int(row.get('segment_id', 0)),
-                            'road_name': row.get('road_name', 'N/A'),
-                            'district': row.get('district', 'N/A'),
-                            'congestion_index': float(row.get('congestion_index', 0)),
-                            'status': row.get('status', 'N/A'),
-                            'average_speed': float(row.get('average_speed', 0)),
-                            'popupContent': popup_content
-                        }
-                    }
-                    features.append(feature)
-                except Exception as e:
-                    print(f"处理地图特征时出错: {e}, 行数据: {row}")
-                    continue
+            # 如果缺少关键列，则尝试找替代
+            if 'road_id' not in available_columns and 'segment_id' in df.columns:
+                df['road_id'] = df['segment_id']
+                available_columns.append('road_id')
             
-            # 构建GeoJSON
-            geojson = {
-                'type': 'FeatureCollection',
-                'features': features
-            }
+            if 'longitude' not in available_columns and 'lng' in df.columns:
+                df['longitude'] = df['lng']
+                available_columns.append('longitude')
             
-            # 验证生成的GeoJSON
-            if not features:
-                print("WARNING: 未生成任何地图特征")
-            else:
-                print(f"INFO: 成功生成 {len(features)} 个地图特征")
+            if 'latitude' not in available_columns and 'lat' in df.columns:
+                df['latitude'] = df['lat']
+                available_columns.append('latitude')
             
-            return json.dumps(geojson)
+            # 选择可用列
+            map_data = df[available_columns].copy()
             
+            # 确保数据类型正确
+            for col in map_data.columns:
+                if col in ['longitude', 'latitude', 'congestion_index']:
+                    # 转换为float
+                    map_data[col] = pd.to_numeric(map_data[col], errors='coerce')
+                    # 替换NaN值
+                    if col == 'congestion_index':
+                        map_data[col].fillna(1.0, inplace=True)
+                    else:
+                        # 经纬度的NaN值会在前端被过滤
+                        pass
+            
+            # 转换为记录列表，确保所有值都是JSON可序列化的
+            records = []
+            for _, row in map_data.iterrows():
+                record = {}
+                for col, value in row.items():
+                    # 处理 pandas Timestamp 对象
+                    if pd.api.types.is_datetime64_any_dtype(type(value)):
+                        record[col] = value.strftime('%Y-%m-%d %H:%M:%S')
+                    # 处理 numpy 类型
+                    elif isinstance(value, (np.integer, np.floating)):
+                        record[col] = float(value) if isinstance(value, np.floating) else int(value)
+                    # 处理 NaN 值
+                    elif pd.isna(value):
+                        if col in ['longitude', 'latitude']:
+                            # 对于经纬度，使用None以便前端过滤
+                            record[col] = None
+                        elif col == 'congestion_index':
+                            # 对于拥堵指数，使用默认值
+                            record[col] = 1.0
+                        else:
+                            record[col] = None
+                    else:
+                        record[col] = value
+                records.append(record)
+            
+            return self.safe_json_dumps(records)
         except Exception as e:
-            print(f"地图数据准备失败: {e}")
-            # 返回空的GeoJSON
-            return json.dumps({'type': 'FeatureCollection', 'features': []})
-    
-    def _get_color(self, congestion):
-        """统一颜色分类逻辑"""
-        if congestion < 0.4:
-            return '#4CAF50'  # 绿色
-        elif congestion < 0.6:
-            return '#FFC107'  # 橙色
-        else:
-            return '#F44336'  # 红色
-    
-    def prepare_congestion_list(self, traffic_data, limit=10):
-        """
-        为拥堵路段列表准备数据
-        
-        参数:
-            traffic_data: 包含交通数据的DataFrame
-            limit: 返回的路段数量限制
-            
-        返回:
-            拥堵路段列表的JSON格式数据
-        """
-        if traffic_data.empty:
-            return json.dumps([])
-        
-        # 按拥堵指数排序
-        sorted_data = traffic_data.sort_values('congestion_index', ascending=False)
-        
-        # 提取前N个拥堵路段
-        top_congested = sorted_data.head(limit)
-        
-        congestion_list = []
-        for _, row in top_congested.iterrows():
-            # 获取路段ID，优先使用segment_id，如果没有则使用id
-            road_id = row.get('segment_id', None) or row.get('id', None)
-            
-            congestion_list.append({
-                'id': road_id,  # 确保包含ID信息
-                'road_name': row['road_name'],
-                'district': row['district'],
-                'latitude': float(row['latitude']),
-                'longitude': float(row['longitude']),
-                'status': row['status'],
-                'congestion_index': float(row['congestion_index']),
-                'average_speed': float(row['average_speed']),
-                'timestamp': row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
-            })
-        
-        return json.dumps(congestion_list)
-    
-    def prepare_trend_data(self, historical_trend):
-        """修复趋势数据格式"""
-        # 确保输入数据是字典列表格式
-        if not isinstance(historical_trend, list) or len(historical_trend) == 0:
-            return json.dumps({'labels': [], 'datasets': []})
-        
-        # 转换时间格式
-        processed_data = []
-        for entry in historical_trend:
-            if isinstance(entry, dict):  # 确保是字典类型
-                processed_data.append({
-                    'hour': entry.get('timestamp', '00:00').split(' ')[-1][:5],
-                    'avg_congestion': float(entry.get('avg_congestion', 0))
-                })
-        
-        return json.dumps({
-            'labels': [t['hour'] for t in processed_data],
-            'datasets': [{
-                'label': '历史拥堵指数',
-                'data': [t['avg_congestion'] for t in processed_data],
-                'borderColor': '#4CAF50',
-                'tension': 0.4
-            }]
-        })
-        """
-        为历史趋势折线图准备数据
-        
-        参数:
-            historical_data: 包含历史数据的DataFrame
-            
-        返回:
-            历史趋势的JSON格式数据
-        """
-        if historical_data.empty:
-            return json.dumps({})
-        
-        # 确保数据按时间排序
-        historical_data = historical_data.sort_values('hour_group')
-        
-        # 准备时间标签
-        time_labels = [dt.strftime('%m-%d %H:00') for dt in historical_data['hour_group']]
-        
-        # 准备趋势数据
-        trend_data = {
-            'time_labels': time_labels,
-            'congestion_index': historical_data['congestion_index'].tolist(),
-            'traffic_flow': historical_data['traffic_flow'].tolist(),
-            'average_speed': historical_data['average_speed'].tolist()
-        }
-        
-        return json.dumps(trend_data)
-    
-    def prepare_statistics(self, traffic_data):
-        """
-        计算并准备交通统计数据
-        
-        参数:
-            traffic_data: 包含交通数据的DataFrame
-            
-        返回:
-            统计信息的JSON格式数据
-        """
-        if traffic_data.empty:
-            # 返回默认值避免NaN
-            return json.dumps({
-                'status_counts': {'畅通': 0, '轻度拥堵': 0, '中度拥堵': 0, '严重拥堵': 0},
-                'avg_congestion': 0.3,
-                'avg_speed': 40.0,
-                'district_stats': {},
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            })
-        
-        # 删除NaN值以避免计算问题
-        clean_data = traffic_data.dropna(subset=['congestion_index', 'average_speed', 'status'])
-        
-        if clean_data.empty:
-            # 如果清理后没有数据，返回默认值
-            return json.dumps({
-                'status_counts': {'畅通': 0, '轻度拥堵': 0, '中度拥堵': 0, '严重拥堵': 0},
-                'avg_congestion': 0.3,
-                'avg_speed': 40.0,
-                'district_stats': {},
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            })
-        
-        # 计算各种交通状态的数量
-        status_counts = clean_data['status'].value_counts().to_dict()
-        
-        # 计算平均拥堵指数，确保是有效值
-        avg_congestion = clean_data['congestion_index'].mean()
-        if pd.isna(avg_congestion):
-            avg_congestion = 0.3  # 默认值
-        
-        # 计算平均车速，确保是有效值
-        avg_speed = clean_data['average_speed'].mean()
-        if pd.isna(avg_speed):
-            avg_speed = 40.0  # 默认值
-        
-        # 按区域分组统计
-        district_stats = {}
+            print(f"准备地图数据时出错: {e}")
+            # 返回一个空列表作为后备
+            return self.safe_json_dumps([])
+
+    def prepare_congestion_list(self, df):
+        """准备拥堵路段列表"""
         try:
-            district_group = clean_data.groupby('district')['congestion_index'].mean()
-            district_stats = {k: float(v) if not pd.isna(v) else 0.3 for k, v in district_group.to_dict().items()}
-            
-            # 添加区域的详细统计信息
-            district_detailed_stats = {}
-            for district, group in clean_data.groupby('district'):
-                severe_count = group[group['congestion_index'] >= 0.7].shape[0]
-                moderate_count = group[(group['congestion_index'] >= 0.4) & (group['congestion_index'] < 0.7)].shape[0]
-                free_count = group[group['congestion_index'] < 0.4].shape[0]
+            # 如果DataFrame为空，返回空列表
+            if df.empty:
+                print("警告: 路段数据为空")
+                return self.safe_json_dumps([])
                 
-                avg_speed_district = group['average_speed'].mean()
-                if pd.isna(avg_speed_district):
-                    avg_speed_district = 35.0  # 默认值
+            # 确保段ID字段一致性
+            if 'segment_id' in df.columns and 'road_id' not in df.columns:
+                df['road_id'] = df['segment_id']
+            elif 'road_id' in df.columns and 'segment_id' not in df.columns:
+                df['segment_id'] = df['road_id']
                 
-                district_detailed_stats[district] = {
-                    'avg_congestion': float(district_stats.get(district, 0.3)),
-                    'avg_speed': float(avg_speed_district),
-                    'road_count': group.shape[0],
-                    'severe_count': severe_count,
-                    'moderate_count': moderate_count,
-                    'free_count': free_count,
-                    'status_distribution': {
-                        '畅通': int(group[group['status'] == '畅通'].shape[0]),
-                        '轻度拥堵': int(group[group['status'] == '轻度拥堵'].shape[0]),
-                        '中度拥堵': int(group[group['status'] == '中度拥堵'].shape[0]),
-                        '严重拥堵': int(group[group['status'] == '严重拥堵'].shape[0])
-                    }
-                }
+            # 按拥堵指数降序排序
+            sorted_df = df.sort_values('congestion_index', ascending=False)
             
-            # 将详细统计信息添加到district_stats
-            district_stats = {
-                'avg_by_district': district_stats,
-                'detailed': district_detailed_stats
-            }
+            # 确保返回必要的字段，且包含完整信息
+            required_columns = [
+                'segment_id', 'road_id', 'road_name', 'congestion_index', 
+                'status', 'district', 'average_speed', 'latitude', 'longitude'
+            ]
+            
+            # 选取可用列
+            available_columns = [col for col in required_columns if col in df.columns]
+            
+            # 如果某些字段不存在，记录警告但不中断处理
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                print(f"警告: 路段数据缺少以下字段: {', '.join(missing_columns)}")
+            
+            # 转换为字典列表
+            roads_list = sorted_df[available_columns].to_dict(orient='records')
+            
+            # 确保每条记录都有必要的ID字段
+            for i, road in enumerate(roads_list):
+                # 确保路段有segment_id字段
+                if 'segment_id' not in road:
+                    road['segment_id'] = road.get('road_id', f"segment_{i}")
+                    
+                # 确保路段有road_id字段 (与前端代码对应)
+                if 'road_id' not in road:
+                    road['road_id'] = road.get('segment_id', f"road_{i}")
+                
+                # 确保前端使用的id字段存在
+                if 'id' not in road:
+                    road['id'] = road.get('road_id', road.get('segment_id', f"road_{i}"))
+                
+                # 确保其他必要字段都有值
+                road['road_name'] = road.get('road_name', f"未命名路段_{i}")
+                road['district'] = road.get('district', '未知区域')
+                road['congestion_index'] = float(road.get('congestion_index', 0))
+                road['average_speed'] = float(road.get('average_speed', 30))
+                
+                # 如果status不存在，则根据拥堵指数设置
+                if 'status' not in road:
+                    congestion = road['congestion_index']
+                    if congestion >= 0.7:
+                        road['status'] = '严重拥堵'
+                    elif congestion >= 0.4:
+                        road['status'] = '中度拥堵'
+                    else:
+                        road['status'] = '畅通'
+            
+            # 打印调试信息
+            print(f"准备了 {len(roads_list)} 条路段数据，样例: {roads_list[0] if roads_list else 'None'}")
+            
+            # 确保所有数值都是JSON可序列化的
+            return self.safe_json_dumps(roads_list, ensure_ascii=False)
             
         except Exception as e:
-            print(f"区域统计计算错误: {e}")
-        
-        # 统计总体信息
-        statistics = {
-            'status_counts': status_counts,
-            'avg_congestion': float(avg_congestion),
-            'avg_speed': float(avg_speed),
-            'district_stats': district_stats,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }
-        
-        return json.dumps(statistics)
-    
-    def prepare_alert_data(self, traffic_data, threshold=0.8):
-        """
-        准备需要发送警报的交通数据
-        
-        参数:
-            traffic_data: 包含交通数据的DataFrame
-            threshold: 触发警报的拥堵指数阈值
-            
-        返回:
-            警报数据的JSON格式
-        """
-        if traffic_data.empty:
-            return json.dumps([])
-        
-        # 筛选出需要警报的路段
-        alert_data = traffic_data[traffic_data['congestion_index'] >= threshold]
-        
-        alerts = []
-        for _, row in alert_data.iterrows():
-            alerts.append({
-                'road_name': row['road_name'],
-                'district': row['district'],
-                'congestion_index': float(row['congestion_index']),
-                'status': row['status'],
-                'timestamp': row['timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
-                'message': f"严重拥堵警报: {row['district']} {row['road_name']} 当前拥堵指数 {row['congestion_index']:.2f}",
-                'level': 'danger' if row['congestion_index'] >= 0.9 else 'warning'
-            })
-        
-        return json.dumps(alerts)
+            print(f"准备拥堵路段列表时出错: {e}")
+            # 出错时返回一个空数组
+            return self.safe_json_dumps([], ensure_ascii=False)
 
-    def prepare_district_analysis(self, traffic_data, district_name=None):
-        """
-        生成特定区域的交通分析数据
+    def prepare_alert_data(self, df):
+        """准备警报数据"""
+        alerts = df[df['congestion_index'] >= 0.7]
+        return self.safe_json_dumps(alerts[['road_name', 'congestion_index']].to_dict(orient='records'))
+
+    def prepare_statistics(self, df):
+        """生成基础统计数据"""
+        # 添加字段存在性检查
+        required_columns = ['congestion_index', 'average_speed', 'status']
+        missing = [col for col in required_columns if col not in df.columns]
+        if missing:
+            raise ValueError(f"缺失必要数据列: {', '.join(missing)}")
+
+        # 计算各状态数量
+        status_counts = df['status'].value_counts()
         
-        参数:
-            traffic_data: 包含交通数据的DataFrame
-            district_name: 区域名称，如果为None则分析所有区域
+        stats = {
+            'avg_congestion': round(float(df['congestion_index'].mean()), 4),
+            'avg_speed': round(float(df['average_speed'].mean()), 2),
+            'total_roads': len(df),
+            'free_count': int(status_counts.get('畅通', 0)),
+            'moderate_count': int(status_counts.get('中度拥堵', 0)),
+            'severe_count': int(status_counts.get('严重拥堵', 0)),
+            'district_stats': {
+                'detailed': df.groupby('district').apply(
+                    lambda x: {
+                        'road_count': len(x),
+                        'avg_congestion': round(x['congestion_index'].mean(), 4),
+                        'avg_speed': round(x['average_speed'].mean(), 2),
+                        'status_distribution': x['status'].value_counts().to_dict()
+                    }
+                ).to_dict()
+            }
+        }
+        return self.safe_json_dumps(stats, ensure_ascii=False)
+
+    def get_trend_data(self):
+        """生成24小时趋势数据（模拟数据）"""
+        return [{
+            'time': (datetime.now() - timedelta(hours=24-i)).strftime("%H:%M"),
+            'value': round(0.3 + random.uniform(-0.1, 0.2), 2)
+        } for i in range(24)]
+
+    def get_district_stats(self):
+        """生成区域统计模拟数据"""
+        districts = ["云岩区", "南明区", "花溪区", "乌当区", "白云区", "观山湖区"]
+        return [{'name': d, 'value': round(0.2 + i*0.1, 2)} for i, d in enumerate(districts)]
+    
+    # 添加区域分析方法
+    def prepare_district_analysis(self, df, district_name):
+        """准备区域分析数据"""
+        try:
+            # 过滤出特定区域的数据
+            if df.empty:
+                # 如果数据为空，返回空结果
+                print(f"警告: 区域 {district_name} 的数据为空")
+                return self.safe_json_dumps({
+                    "district": district_name,
+                    "stats": {},
+                    "roads": [],
+                    "prediction": {}
+                }, ensure_ascii=False)
             
-        返回:
-            区域分析的JSON格式数据
-        """
-        if traffic_data.empty:
-            return json.dumps({
-                'district_name': district_name or '全市',
-                'avg_congestion': 0.3,
-                'avg_speed': 40.0,
-                'road_count': 0,
-                'congested_roads': [],
-                'hourly_pattern': [],
-                'top_congested_roads': []
-            })
-        
-        # 筛选特定区域的数据，如果district_name为None则使用所有数据
-        if district_name:
-            district_data = traffic_data[traffic_data['district'] == district_name]
+            district_data = df[df['district'] == district_name] if 'district' in df.columns else df
+            
             if district_data.empty:
-                return json.dumps({
-                    'district_name': district_name,
-                    'avg_congestion': 0.3,
-                    'avg_speed': 40.0,
-                    'road_count': 0,
-                    'congested_roads': [],
-                    'hourly_pattern': [],
-                    'top_congested_roads': []
-                })
-        else:
-            district_data = traffic_data
-        
-        # 计算基本统计数据
-        avg_congestion = district_data['congestion_index'].mean()
-        avg_speed = district_data['average_speed'].mean()
-        road_count = district_data.shape[0]
-        
-        # 筛选拥堵路段
-        congested_roads = district_data[district_data['congestion_index'] >= 0.6]
-        
-        # 生成模拟的小时模式数据（实际应用中可从历史数据获取）
-        current_hour = datetime.now().hour
-        hourly_pattern = []
-        for hour in range(24):
-            if 7 <= hour <= 9:  # 早高峰
-                base_congestion = 0.7
-            elif 17 <= hour <= 19:  # 晚高峰
-                base_congestion = 0.8
-            elif 10 <= hour <= 16:  # 工作时间
-                base_congestion = 0.5
-            else:  # 夜间和凌晨
-                base_congestion = 0.3
+                # 如果该区域没有数据，返回空结果
+                print(f"警告: 找不到区域 {district_name} 的数据")
+                return self.safe_json_dumps({
+                    "district": district_name,
+                    "stats": {},
+                    "roads": [],
+                    "prediction": {}
+                }, ensure_ascii=False)
             
-            # 添加时间点数据，当前小时数据使用实际平均值
-            if hour == current_hour:
-                hourly_pattern.append({
-                    'hour': f"{hour}:00",
-                    'congestion': float(avg_congestion),
-                    'is_current': True
-                })
-            else:
-                # 为非当前小时添加随机波动
-                congestion_with_noise = base_congestion + (np.random.random() * 0.2 - 0.1)
-                hourly_pattern.append({
-                    'hour': f"{hour}:00",
-                    'congestion': float(min(0.95, max(0.1, congestion_with_noise))),
-                    'is_current': False
-                })
-        
-        # 获取拥堵最严重的前10条道路
-        top_congested = district_data.sort_values('congestion_index', ascending=False).head(10)
-        top_congested_list = []
-        
-        for _, road in top_congested.iterrows():
-            road_id = road.get('segment_id') or road.get('id')
-            top_congested_list.append({
-                'id': int(road_id) if road_id is not None else 0,
-                'road_name': road['road_name'],
-                'congestion_index': float(road['congestion_index']),
-                'status': road['status'],
-                'average_speed': float(road['average_speed']),
-                'latitude': float(road['latitude']),
-                'longitude': float(road['longitude'])
+            # 计算基本统计信息
+            avg_congestion = round(float(district_data['congestion_index'].mean()), 4)
+            avg_speed = round(float(district_data['average_speed'].mean() if 'average_speed' in district_data.columns else 0), 2)
+            
+            # 路段状态统计
+            status_counts = district_data['status'].value_counts().to_dict() if 'status' in district_data.columns else {}
+            
+            # 准备道路数据
+            roads = district_data.sort_values('congestion_index', ascending=False)
+            road_list = []
+            
+            for _, road in roads.iterrows():
+                road_data = {}
+                for col, val in road.items():
+                    # 转换特殊类型为JSON可序列化类型
+                    if pd.api.types.is_datetime64_any_dtype(type(val)):
+                        road_data[col] = val.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(val, (np.integer, np.floating)):
+                        road_data[col] = float(val) if isinstance(val, np.floating) else int(val)
+                    elif pd.isna(val):
+                        road_data[col] = None
+                    else:
+                        road_data[col] = val
+                road_list.append(road_data)
+            
+            # 生成分析结果
+            analysis = {
+                "district": district_name,
+                "stats": {
+                    "avg_congestion": avg_congestion,
+                    "avg_speed": avg_speed,
+                    "total_roads": len(district_data),
+                    "status_distribution": status_counts
+                },
+                "roads": road_list[:20],  # 限制返回路段数量
+                "prediction": {}  # 预测数据会由其他API填充
+            }
+            
+            return self.safe_json_dumps(analysis, ensure_ascii=False)
+            
+        except Exception as e:
+            print(f"准备区域分析数据时出错: {e}")
+            # 返回一个基本结构作为后备
+            return self.safe_json_dumps({
+                "district": district_name,
+                "stats": {},
+                "roads": [],
+                "prediction": {},
+                "error": str(e)
+            }, ensure_ascii=False)
+
+    def prepare_trend_data(self, historical_data):
+        """准备趋势数据以供图表显示"""
+        if historical_data.empty:
+            # 如果没有历史数据，返回一些模拟数据
+            time_points = [(datetime.now() - timedelta(hours=i)).strftime('%H:%M') for i in range(24, -1, -1)]
+            return self.safe_json_dumps({
+                "times": time_points,
+                "congestion_indices": [random.uniform(1.0, 2.0) for _ in range(25)],
             })
         
-        # 准备响应数据
-        district_analysis = {
-            'district_name': district_name or '全市',
-            'avg_congestion': float(avg_congestion),
-            'avg_speed': float(avg_speed),
-            'road_count': int(road_count),
-            'congested_count': int(congested_roads.shape[0]),
-            'congestion_percent': float(congested_roads.shape[0] / max(1, road_count)),
-            'status_distribution': {
-                '畅通': int(district_data[district_data['status'] == '畅通'].shape[0]),
-                '轻度拥堵': int(district_data[district_data['status'] == '轻度拥堵'].shape[0]),
-                '中度拥堵': int(district_data[district_data['status'] == '中度拥堵'].shape[0]),
-                '严重拥堵': int(district_data[district_data['status'] == '严重拥堵'].shape[0])
-            },
-            'hourly_pattern': hourly_pattern,
-            'top_congested_roads': top_congested_list
-        }
+        # 确保时间列是datetime类型
+        if 'timestamp' in historical_data.columns:
+            time_col = 'timestamp'
+        elif 'time' in historical_data.columns:
+            time_col = 'time'
+        else:
+            # 如果没有时间列，创建一个时间序列
+            historical_data['timestamp'] = pd.date_range(
+                end=datetime.now(), 
+                periods=len(historical_data), 
+                freq='H'
+            )
+            time_col = 'timestamp'
         
-        return json.dumps(district_analysis)
+        # 确保时间列为datetime类型
+        if not pd.api.types.is_datetime64_any_dtype(historical_data[time_col]):
+            try:
+                historical_data[time_col] = pd.to_datetime(historical_data[time_col])
+            except:
+                # 如果转换失败，创建一个新的时间列
+                historical_data['timestamp'] = pd.date_range(
+                    end=datetime.now(), 
+                    periods=len(historical_data), 
+                    freq='H'
+                )
+                time_col = 'timestamp'
+        
+        # 如果有多个记录，按时间排序并选择最近24小时
+        historical_data = historical_data.sort_values(by=time_col)
+        if len(historical_data) > 24:
+            historical_data = historical_data.iloc[-24:]
+        
+        # 提取时间和拥堵指数
+        times = [t.strftime('%H:%M') for t in historical_data[time_col]]
+        
+        # 确保 congestion_index 列存在
+        if 'congestion_index' not in historical_data.columns and 'congestion' in historical_data.columns:
+            historical_data['congestion_index'] = historical_data['congestion']
+        elif 'congestion_index' not in historical_data.columns:
+            # 创建一个随机的拥堵指数
+            historical_data['congestion_index'] = [random.uniform(1.0, 2.0) for _ in range(len(historical_data))]
+        
+        congestion_indices = historical_data['congestion_index'].tolist()
+        
+        # 确保所有值都是可序列化的
+        congestion_indices = [float(c) if not pd.isna(c) else 1.0 for c in congestion_indices]
+        
+        return self.safe_json_dumps({
+            "times": times,
+            "congestion_indices": congestion_indices,
+        })
 
-# 测试代码
-if __name__ == "__main__":
-    # 创建一些模拟数据进行测试
-    from data_generator import TrafficDataGenerator
+    def safe_json_dumps(self, data, ensure_ascii=True, **kwargs):
+        """安全的JSON序列化方法，处理pandas和numpy类型"""
+        try:
+            # 尝试直接序列化
+            return json.dumps(data, ensure_ascii=ensure_ascii, cls=self.CustomJSONEncoder, **kwargs)
+        except (TypeError, OverflowError) as e:
+            # 如果失败，尝试将数据转换为普通Python类型
+            print(f"JSON序列化警告: {e}")
+            
+            if isinstance(data, dict):
+                cleaned_data = {}
+                for k, v in data.items():
+                    cleaned_data[k] = self._convert_to_serializable(v)
+                return json.dumps(cleaned_data, ensure_ascii=ensure_ascii, **kwargs)
+            
+            elif isinstance(data, list):
+                cleaned_data = [self._convert_to_serializable(item) for item in data]
+                return json.dumps(cleaned_data, ensure_ascii=ensure_ascii, **kwargs)
+            
+            else:
+                # 单个值
+                return json.dumps(self._convert_to_serializable(data), ensure_ascii=ensure_ascii, **kwargs)
     
-    generator = TrafficDataGenerator(num_road_segments=10)
-    processor = TrafficDataProcessor()
-    
-    # 获取实时数据
-    real_time_data = generator.get_real_time_data()
-    
-    # 测试地图数据处理
-    map_data = processor.prepare_map_data(real_time_data)
-    print("地图数据示例:")
-    print(map_data[:200] + "...")  # 只显示前200个字符
-    
-    # 测试拥堵列表处理
-    congestion_list = processor.prepare_congestion_list(real_time_data)
-    print("\n拥堵列表示例:")
-    print(congestion_list[:200] + "...")
-    
-    # 测试历史趋势数据处理
-    historical_data = generator.get_historical_trend()
-    trend_data = processor.prepare_trend_data(historical_data)
-    print("\n趋势数据示例:")
-    print(trend_data[:200] + "...")
+    def _convert_to_serializable(self, obj):
+        """将对象转换为JSON可序列化类型"""
+        if isinstance(obj, dict):
+            return {k: self._convert_to_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list) or isinstance(obj, tuple):
+            return [self._convert_to_serializable(item) for item in obj]
+        elif pd.api.types.is_datetime64_any_dtype(type(obj)) or isinstance(obj, datetime):
+            return obj.strftime('%Y-%m-%d %H:%M:%S')
+        elif isinstance(obj, (np.integer, np.int64)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return self._convert_to_serializable(obj.tolist())
+        elif pd.isna(obj):
+            return None
+        else:
+            return obj
+            
+    class CustomJSONEncoder(json.JSONEncoder):
+        """自定义JSON编码器，处理特殊类型"""
+        def default(self, obj):
+            # 处理 pandas Timestamp
+            if pd.api.types.is_datetime64_any_dtype(type(obj)):
+                return obj.strftime('%Y-%m-%d %H:%M:%S')
+            # 处理 Python datetime
+            elif isinstance(obj, datetime):
+                return obj.strftime('%Y-%m-%d %H:%M:%S')
+            # 处理 numpy int
+            elif isinstance(obj, (np.integer, np.int64)):
+                return int(obj)
+            # 处理 numpy float
+            elif isinstance(obj, (np.floating, np.float64)):
+                return float(obj)
+            # 处理 numpy array
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            # 处理 pandas NaT, None 等
+            elif pd.isna(obj):
+                return None
+            # 默认行为
+            return super().default(obj)

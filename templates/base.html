@@ -29,6 +29,8 @@
     
     <!-- 自定义样式 -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- 科技霓虹主题 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/neon-tech-theme.css') }}">
     {% block extra_css %}{% endblock %}
     
     <style>
@@ -96,33 +98,40 @@
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
+    <!-- 科技感装饰元素 -->
+    <div class="tech-decoration"></div>
+    <div class="tech-decoration right"></div>
+    
     <!-- 顶部导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
                 <i class="fas fa-traffic-light me-2"></i>贵阳市交通拥堵监测系统
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav mx-auto">
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">
+                        <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="/">
                             <i class="fas fa-tachometer-alt me-1"></i>实时监控
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'district_analysis' %}active{% endif %}" href="{{ url_for('district_analysis') }}">
-                            <i class="fas fa-map-marked-alt me-1"></i>区域分析
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_page == 'analysis' %}active{% endif %}" href="{{ url_for('analysis') }}">
+                        <a class="nav-link {% if active_page == 'analysis' %}active{% endif %}" href="/analysis">
                             <i class="fas fa-chart-line me-1"></i>数据分析
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if active_page == 'district_analysis' or active_page == 'district_detail' %}active{% endif %}" href="/district_analysis">
+                            <i class="fas fa-map-marked-alt me-1"></i>区域分析
+                        </a>
+                    </li>
                 </ul>
+                <div class="ms-auto">
+                    <span id="current-time" class="neon-pulse"></span>
+                </div>
             </div>
         </div>
     </nav>
@@ -133,7 +142,7 @@
     </div>
 
     <!-- 底部版权信息 -->
-    <footer class="bg-light py-2">
+    <footer class="py-2">
         <div class="container-fluid text-center text-muted">
             <small>&copy; 2025 贵阳市交通拥堵监测系统 | 技术支持: 智慧交通团队</small>
         </div>
@@ -171,13 +180,13 @@
             const options = { 
                 year: 'numeric', 
                 month: 'long', 
-                day: 'numeric', 
-                weekday: 'long',
+                day: 'numeric',
                 hour: '2-digit', 
                 minute: '2-digit', 
                 second: '2-digit' 
             };
-            document.getElementById('current-time').textContent = now.toLocaleDateString('zh-CN', options);
+            const timeStr = now.toLocaleDateString('zh-CN', options);
+            document.getElementById('current-time').innerHTML = '<i class="fas fa-clock me-1"></i>' + timeStr;
         }
         
         updateTime();
